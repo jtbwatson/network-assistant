@@ -41,7 +41,7 @@ The model is based on Llama 3.2 and configured with a specialized system prompt 
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/jtbwatson/network-assistant.git
    cd network-troubleshooting-assistant
    ```
 
