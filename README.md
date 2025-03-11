@@ -21,63 +21,21 @@ A Flask-based web application that provides an interactive network troubleshooti
 
 ### Model Setup with Ollama
 
-To create the custom network troubleshooting model:
+The application uses a custom Ollama model specifically tailored for network troubleshooting:
 
 1. Install Ollama from the official website (https://ollama.com/)
 
-2. Create a Modelfile for the network assistant:
+2. Create the custom model using the included Modelfile:
    ```bash
-   nano network-assistant.modelfile
+   ollama create network-assistant -f Modelfile
    ```
 
-3. Copy the following content into the Modelfile:
-   ```dockerfile
-   FROM llama3.2
-
-   # Metadata about the model
-   PARAMETER temperature 0.7
-   PARAMETER top_p 0.9
-   PARAMETER stop "<|im_end|>"
-
-   # System prompt that defines the assistant's behavior
-   SYSTEM """
-   You are a Network Troubleshooting Assistant, an expert system designed to help IT professionals diagnose and resolve networking issues. Your knowledge covers:
-
-   1. Network protocols (TCP/IP, DNS, DHCP, HTTP/S, SSH, FTP, etc.)
-   2. Network infrastructure (routers, switches, firewalls, load balancers)
-   3. Network services and applications
-   4. Connectivity issues and their resolution
-   5. Performance optimization
-   6. Security best practices
-   7. Wireless networking
-   8. VPNs and remote access
-   9. Cloud networking concepts
-   10. Network monitoring and diagnostics
-
-   When helping users:
-   - Ask clarifying questions to properly diagnose issues
-   - Provide step-by-step troubleshooting procedures
-   - Explain concepts clearly using technical terms appropriately
-   - Offer both immediate fixes and long-term solutions when relevant
-   - Respect network security best practices
-   - Reference specific commands, tools, or configurations when appropriate
-   - Admit when you need more information to provide an accurate solution
-
-   You should adapt your responses based on the technical level of the user. For basic questions, provide educational explanations. For advanced issues, focus on efficient technical solutions.
-   """
-   ```
-
-4. Create the Ollama model:
-   ```bash
-   ollama create network-assistant -f network-assistant.modelfile
-   ```
-
-5. Verify the model is created:
+3. Verify the model is created:
    ```bash
    ollama list
    ```
 
-You should see `network-assistant` in the list of available models.
+The model is based on Llama 3.2 and configured with a specialized system prompt to provide expert-level network troubleshooting assistance. It's designed to help IT professionals diagnose and resolve networking issues across various domains. You can of course use any model you like, but this has only been tested on Llama 3.2.
 
 ### Installation Steps
 
@@ -120,21 +78,17 @@ You should see `network-assistant` in the list of available models.
 ## Model Details
 
 ### Base Model
-- The assistant uses Llama 3.2 as its foundational language model
-- Specialized with a custom system prompt for network troubleshooting
+- Utilizes Llama 3.2 as the foundational language model
+- Customized with a specialized system prompt for network troubleshooting
+- Configured to provide technical, contextually relevant assistance
 
-### Model Configuration
-- **Temperature**: 0.7 (balanced between creativity and determinism)
-- **Top P**: 0.9 (allows diverse but relevant responses)
-- **Stopping Criteria**: Configured to stop at `<|im_end|>`
-
-### Capabilities
-The model is specifically trained to:
-- Diagnose network issues
-- Provide technical guidance
-- Explain networking concepts
-- Offer troubleshooting steps
-- Adapt to different technical skill levels
+### Key Capabilities
+The model is engineered to:
+- Diagnose complex network issues
+- Provide step-by-step technical guidance
+- Explain networking concepts clearly
+- Offer both immediate and long-term solutions
+- Adapt responses to the user's technical skill level
 
 ## Configuration
 
