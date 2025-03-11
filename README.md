@@ -1,1 +1,1 @@
-# llm_troubleshooting_app
+# network-assistant
