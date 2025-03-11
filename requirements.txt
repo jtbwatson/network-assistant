@@ -1,0 +1,7 @@
+flask==2.3.3
+pyyaml==6.0.1
+watchdog==3.0.0
+chromadb==0.4.22
+sentence-transformers==2.5.1
+numpy==1.26.3
+torch==2.2.0
