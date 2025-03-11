@@ -8,23 +8,26 @@ import re
 import hashlib
 from pathlib import Path
 import requests  # Added for remote Ollama API calls
+from dotenv import load_dotenv  # Added for .env file support
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 
-# --- Configuration ---
-DOCS_DIR = "./network_docs"
-DB_DIR = "./chroma_db"
-CHUNK_SIZE = 512
-CHUNK_OVERLAP = 50
-SEARCH_RESULTS = 5
-OLLAMA_HOST = "http://10.13.37.233:11434"  # Your desktop IP where Ollama is running
-# OLLAMA_HOST = "http://localhost:11434"  # Localhost for testing
-OLLAMA_MODEL = "network-assistant"  # Model to use
+# --- Configuration from environment variables ---
+DOCS_DIR = os.getenv("DOCS_DIR", "./network_docs")
+DB_DIR = os.getenv("DB_DIR", "./chroma_db")
+CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "512"))
+CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "50"))
+SEARCH_RESULTS = int(os.getenv("SEARCH_RESULTS", "5"))
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "network-assistant")
+DEBUG_MODE = os.getenv("DEBUG_MODE", "False").lower() == "true"
 
 # Safely import ChromaDB with Python 3.12 compatibility
 try:
     import chromadb
-
     CHROMA_AVAILABLE = True
 except ImportError as e:
     print(f"ChromaDB import error: {e}")
@@ -909,6 +912,18 @@ if __name__ == "__main__":
     # Make sure the docs directory exists
     os.makedirs(DOCS_DIR, exist_ok=True)
 
+    # Print current configuration
+    print("=== Network Troubleshooting Assistant Configuration ===")
+    print(f"DOCS_DIR: {DOCS_DIR}")
+    print(f"DB_DIR: {DB_DIR}")
+    print(f"OLLAMA_HOST: {OLLAMA_HOST}")
+    print(f"OLLAMA_MODEL: {OLLAMA_MODEL}")
+    print(f"CHUNK_SIZE: {CHUNK_SIZE}")
+    print(f"CHUNK_OVERLAP: {CHUNK_OVERLAP}")
+    print(f"SEARCH_RESULTS: {SEARCH_RESULTS}")
+    print(f"DEBUG_MODE: {DEBUG_MODE}")
+    print("====================================================")
+
     # Check if we can connect to Ollama at startup
     try:
         response = requests.get(f"{OLLAMA_HOST}/api/tags")
@@ -920,4 +935,4 @@ if __name__ == "__main__":
         print(f"WARNING: Could not connect to Ollama at {OLLAMA_HOST}: {e}")
 
     # Start the application
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=DEBUG_MODE, host="0.0.0.0", port=int(os.getenv("PORT", "5000")))

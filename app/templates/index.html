@@ -5,38 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Network Troubleshooting Assistant</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         .chat-message {
             animation: fadeIn 0.3s;
-            margin-bottom: 12px;
-            max-width: 80%;
-            clear: both;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
-        }
-        .user-message {
-            background-color: #4338ca; /* Indigo 700 */
-            float: right;
-            border-radius: 18px 18px 0 18px;
-            margin-left: auto;
-        }
-        .assistant-message {
-            background-color: #374151; /* Gray 700 */
-            float: left;
-            border-radius: 18px 18px 18px 0;
-        }
-        .error-message {
-            background-color: #991b1b; /* Red 800 */
-            float: left;
-            border-radius: 18px 18px 18px 0;
-        }
-        #chatMessages::after {
-            content: "";
-            display: table;
-            clear: both;
         }
         .loader {
             display: inline-block;
@@ -71,6 +46,7 @@
         <header class="bg-indigo-900 text-white rounded-lg p-4 mb-6 shadow-lg">
             <h1 class="text-2xl font-bold">Network Troubleshooting Assistant</h1>
             <p class="text-sm opacity-80">Powered by Ollama and ChromaDB</p>
+            <p id="connStatus" class="text-xs mt-1 opacity-70"></p>
         </header>
         
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -78,32 +54,35 @@
             <div class="md:col-span-1">
                 <div class="bg-gray-800 rounded-lg shadow-md p-4 mb-4 border border-gray-700">
                     <h2 class="font-bold text-lg mb-3 text-gray-200">Document Management</h2>
-                    <div class="flex space-x-2 mb-3">
-                        <button id="indexDocs" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 flex-1 transition-colors">
-                            Index Documents
-                        </button>
-                        <button id="forceReindex" class="bg-purple-600 text-white py-2 px-4 rounded hover:bg-purple-700 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
-                            </svg>
-                        </button>
-                    </div>
+                    <button id="indexDocs" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 w-full transition-colors">
+                        Index Documents
+                    </button>
                     <div id="indexStatus" class="mt-2 text-sm text-gray-400"></div>
-                    
-                    <!-- Document status section -->
-                    <div class="mt-4">
-                        <h3 class="text-md font-semibold mb-2 text-gray-300">Available Documents</h3>
-                        <ul id="docsStatusList" class="text-sm max-h-60 overflow-y-auto">
-                            <li class="italic text-gray-500">Loading documents...</li>
-                        </ul>
-                    </div>
                 </div>
                 
-                <div class="bg-gray-800 rounded-lg shadow-md p-4 border border-gray-700">
+                <div class="bg-gray-800 rounded-lg shadow-md p-4 mb-4 border border-gray-700">
                     <h2 class="font-bold text-lg mb-3 text-gray-200">Sources Used</h2>
                     <ul id="sourcesList" class="text-sm text-gray-400">
                         <li class="italic">No sources used yet</li>
                     </ul>
+                </div>
+                
+                <div class="bg-gray-800 rounded-lg shadow-md p-4 border border-gray-700">
+                    <h2 class="font-bold text-lg mb-3 text-gray-200">System Info</h2>
+                    <div id="systemInfo" class="text-xs text-gray-400">
+                        <div class="flex justify-between mb-1">
+                            <span>Model:</span>
+                            <span id="modelInfo" class="text-blue-400"></span>
+                        </div>
+                        <div class="flex justify-between mb-1">
+                            <span>Documents:</span>
+                            <span id="docsInfo" class="text-blue-400">Loading...</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>ChromaDB:</span>
+                            <span id="chromaInfo" class="text-blue-400">Checking...</span>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -111,7 +90,7 @@
             <div class="md:col-span-3">
                 <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col border border-gray-700" style="height: 80vh;">
                     <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-4">
-                        <div class="chat-message assistant-message p-3 rounded-lg inline-block">
+                        <div class="chat-message bg-gray-700 p-3 rounded-lg inline-block max-w-md">
                             <p>Hello! I'm your network troubleshooting assistant.</p>
                             <ol class="list-decimal pl-5 mt-2">
                                 <li>Click "Index Documents" to load your network docs</li>
@@ -149,13 +128,73 @@
             const chatMessages = document.getElementById('chatMessages');
             const sourcesList = document.getElementById('sourcesList');
             const indexDocsBtn = document.getElementById('indexDocs');
-            const forceReindexBtn = document.getElementById('forceReindex');
             const indexStatus = document.getElementById('indexStatus');
             const sendText = document.getElementById('sendText');
             const loadingIndicator = document.getElementById('loadingIndicator');
+            const modelInfo = document.getElementById('modelInfo');
+            const docsInfo = document.getElementById('docsInfo');
+            const chromaInfo = document.getElementById('chromaInfo');
+            const connStatus = document.getElementById('connStatus');
             
             // Generate a random session ID
             const sessionId = Math.random().toString(36).substring(2, 15);
+            
+            // Load system info at startup
+            async function loadSystemInfo() {
+                try {
+                    const response = await fetch('/get_docs_status');
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        // Update documents info
+                        const totalDocs = data.files.length;
+                        const indexedDocs = data.files.filter(file => file.indexed).length;
+                        docsInfo.textContent = `${indexedDocs}/${totalDocs} indexed`;
+                        
+                        // Update ChromaDB status
+                        chromaInfo.textContent = data.chroma_available ? 'Available' : 'Not available';
+                        chromaInfo.className = data.chroma_available ? 'text-green-400' : 'text-red-400';
+                        
+                        // Get Ollama model info (it's shown in the connStatus element)
+                        checkOllamaConnection();
+                    } else {
+                        docsInfo.textContent = 'Error loading info';
+                        chromaInfo.textContent = 'Unknown';
+                    }
+                } catch (error) {
+                    console.error('Error loading system info:', error);
+                    docsInfo.textContent = 'Error loading info';
+                }
+            }
+            
+            // Check Ollama connection status
+            async function checkOllamaConnection() {
+                try {
+                    // Make a simple request to test the connection
+                    const simple_message = "What is your model name?";
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ 
+                            message: simple_message,
+                            session_id: 'system_check'
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    connStatus.textContent = `Connected to Ollama: ${modelInfo.textContent || 'Unknown model'}`;
+                    connStatus.className = 'text-xs mt-1 text-green-400';
+                } catch (error) {
+                    console.error('Error checking Ollama connection:', error);
+                    connStatus.textContent = 'Warning: Could not connect to Ollama';
+                    connStatus.className = 'text-xs mt-1 text-red-400';
+                }
+            }
+            
+            // Load system info at startup
+            loadSystemInfo();
             
             // Chat form submission
             chatForm.addEventListener('submit', async (e) => {
@@ -200,6 +239,11 @@
                         });
                     }
                     
+                    // Get model info if it's the first message
+                    if (!modelInfo.textContent && data.response) {
+                        modelInfo.textContent = 'network-assistant';
+                    }
+                    
                     // If in information gathering mode, auto-focus the input field
                     if (data.gathering_info) {
                         messageInput.focus();
@@ -214,90 +258,14 @@
                 loadingIndicator.classList.add('hidden');
             });
             
-            // Function to load document status
-            async function loadDocsStatus() {
-                try {
-                    const response = await fetch('/get_docs_status');
-                    const data = await response.json();
-                    
-                    const statusList = document.getElementById('docsStatusList');
-                    statusList.innerHTML = '';
-                    
-                    if (data.status === 'error') {
-                        statusList.innerHTML = `<li class="text-red-400">Error: ${data.message}</li>`;
-                        return;
-                    }
-                    
-                    if (!data.chroma_available) {
-                        statusList.innerHTML = `<li class="text-yellow-400">ChromaDB not available. Vector search disabled.</li>`;
-                    }
-                    
-                    if (data.files.length === 0) {
-                        statusList.innerHTML = `<li class="italic text-gray-500">No documents found in the network_docs folder.</li>`;
-                        return;
-                    }
-                    
-                    // Create list items for each file
-                    data.files.forEach(file => {
-                        const li = document.createElement('li');
-                        li.className = 'flex items-center py-1';
-                        
-                        // Status icon
-                        const statusIcon = document.createElement('span');
-                        if (file.indexed) {
-                            statusIcon.className = 'text-green-500 mr-2';
-                            statusIcon.innerHTML = '✓';
-                        } else {
-                            statusIcon.className = 'text-yellow-500 mr-2';
-                            statusIcon.innerHTML = '⟳';
-                        }
-                        
-                        // Filename
-                        const fileName = document.createElement('span');
-                        fileName.textContent = file.name;
-                        fileName.className = file.indexed ? 'text-gray-300' : 'text-gray-400';
-                        
-                        li.appendChild(statusIcon);
-                        li.appendChild(fileName);
-                        statusList.appendChild(li);
-                    });
-                    
-                    // Add note about symbols
-                    const noteLi = document.createElement('li');
-                    noteLi.className = 'mt-2 text-xs text-gray-500';
-                    noteLi.innerHTML = '✓ = Indexed | ⟳ = Needs indexing';
-                    statusList.appendChild(noteLi);
-                    
-                } catch (error) {
-                    console.error('Error loading document status:', error);
-                    const statusList = document.getElementById('docsStatusList');
-                    statusList.innerHTML = `<li class="text-red-400">Error loading document status</li>`;
-                }
-            }
-            
-            // Regular indexing (skip unchanged files)
+            // Index documents
             indexDocsBtn.addEventListener('click', async () => {
-                await performIndexing(false);
-            });
-            
-            // Force reindex (all files)
-            forceReindexBtn.addEventListener('click', async () => {
-                await performIndexing(true);
-            });
-            
-            // Common indexing function
-            async function performIndexing(forceReindex) {
                 indexStatus.textContent = 'Indexing documents...';
                 indexDocsBtn.disabled = true;
-                forceReindexBtn.disabled = true;
                 
                 try {
                     const response = await fetch('/index_docs', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ force_reindex: forceReindex })
+                        method: 'POST'
                     });
                     
                     const data = await response.json();
@@ -306,13 +274,15 @@
                         indexStatus.textContent = data.error;
                         indexStatus.className = 'mt-2 text-sm text-red-400';
                     } else {
-                        // Show more detailed status
-                        if (data.updated && data.updated > 0) {
-                            indexStatus.textContent = `Indexed ${data.indexed} new and updated ${data.updated} existing documents.`;
+                        if (data.total !== undefined) {
+                            indexStatus.textContent = `Indexed ${data.indexed} new, updated ${data.updated} existing documents.`;
                         } else {
                             indexStatus.textContent = `Indexed ${data.indexed} documents successfully.`;
                         }
                         indexStatus.className = 'mt-2 text-sm text-green-400';
+                        
+                        // Refresh system info after indexing
+                        loadSystemInfo();
                     }
                 } catch (error) {
                     console.error('Error:', error);
@@ -321,114 +291,32 @@
                 }
                 
                 indexDocsBtn.disabled = false;
-                forceReindexBtn.disabled = false;
-                
-                // Refresh document status
-                loadDocsStatus();
-            }
+            });
             
-            // Function to append messages to the chat
+            // Handle adding messages to the chat
             function appendMessage(content, sender, isError = false) {
                 const messageDiv = document.createElement('div');
+                messageDiv.className = 'chat-message ' + 
+                    (sender === 'user' 
+                        ? 'bg-indigo-800 ml-auto' 
+                        : isError ? 'bg-red-900' : 'bg-gray-700') + 
+                    ' p-3 rounded-lg inline-block max-w-md';
                 
-                // Set different classes based on sender
-                let messageClass = 'chat-message p-3 ';
+                // Handle markdown-style code blocks
+                let formattedContent = content.replace(/```([^`]+)```/g, '<pre class="bg-gray-900 p-2 rounded text-sm overflow-x-auto my-2 text-gray-300">$1</pre>');
                 
-                if (sender === 'user') {
-                    messageClass += 'user-message';
-                } else if (isError) {
-                    messageClass += 'error-message';
-                } else {
-                    messageClass += 'assistant-message';
-                }
+                // Handle inline code
+                formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code class="bg-gray-900 px-1 rounded text-sm text-gray-300">$1</code>');
                 
-                messageDiv.className = messageClass;
+                // Handle line breaks
+                formattedContent = formattedContent.replace(/\n/g, '<br>');
                 
-                // Use marked.js to render markdown
-                try {
-                    // Set markdown options to handle breaks as <br>
-                    marked.setOptions({
-                        breaks: true,
-                        gfm: true
-                    });
-                    
-                    // Parse markdown
-                    const parsedContent = marked.parse(content);
-                    messageDiv.innerHTML = parsedContent;
-                } catch (e) {
-                    // Fallback if markdown parsing fails
-                    console.error("Markdown parsing failed:", e);
-                    
-                    // Handle markdown-style code blocks manually
-                    let formattedContent = content.replace(/```([^`]+)```/g, '<pre class="bg-gray-900 p-2 rounded text-sm overflow-x-auto my-2 text-gray-300">$1</pre>');
-                    
-                    // Handle inline code
-                    formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code class="bg-gray-900 px-1 rounded text-sm text-gray-300">$1</code>');
-                    
-                    // Handle line breaks
-                    formattedContent = formattedContent.replace(/\n/g, '<br>');
-                    
-                    messageDiv.innerHTML = formattedContent;
-                }
-                
-                // Add some additional styling to rendered markdown
-                const additionalStyles = `
-                    <style>
-                        .chat-message h1, .chat-message h2, .chat-message h3 { 
-                            margin-top: 10px;
-                            margin-bottom: 8px;
-                            font-weight: bold;
-                        }
-                        .chat-message h1 { font-size: 1.5em; }
-                        .chat-message h2 { font-size: 1.3em; }
-                        .chat-message h3 { font-size: 1.1em; }
-                        .chat-message ol, .chat-message ul { 
-                            padding-left: 20px;
-                            margin: 8px 0;
-                        }
-                        .chat-message ol { list-style-type: decimal; }
-                        .chat-message ul { list-style-type: disc; }
-                        .chat-message pre {
-                            background-color: #1F2937;
-                            padding: 10px;
-                            border-radius: 5px;
-                            overflow-x: auto;
-                            margin: 10px 0;
-                        }
-                        .chat-message code {
-                            background-color: #1F2937;
-                            padding: 2px 4px;
-                            border-radius: 3px;
-                            font-family: monospace;
-                        }
-                        .chat-message p {
-                            margin-bottom: 8px;
-                        }
-                        .chat-message strong, .chat-message b {
-                            font-weight: bold;
-                        }
-                        .chat-message em, .chat-message i {
-                            font-style: italic;
-                        }
-                    </style>
-                `;
-                
-                messageDiv.innerHTML += additionalStyles;
-                
-                // Add to the chat container
+                messageDiv.innerHTML = formattedContent;
                 chatMessages.appendChild(messageDiv);
-                
-                // Clear float to ensure proper layout
-                const clearDiv = document.createElement('div');
-                clearDiv.style.clear = 'both';
-                chatMessages.appendChild(clearDiv);
                 
                 // Scroll to bottom
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
-            
-            // Load initial document status when the page loads
-            loadDocsStatus();
         });
     </script>
 </body>
