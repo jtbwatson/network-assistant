@@ -8,22 +8,18 @@ import re
 import hashlib
 from pathlib import Path
 import requests  # Added for remote Ollama API calls
-from dotenv import load_dotenv  # Added for .env file support
-
-# Load environment variables from .env file
-load_dotenv()
+import time
 
 app = Flask(__name__)
 
-# --- Configuration from environment variables ---
-DOCS_DIR = os.getenv("DOCS_DIR", "./network_docs")
-DB_DIR = os.getenv("DB_DIR", "./chroma_db")
-CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "512"))
-CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "50"))
-SEARCH_RESULTS = int(os.getenv("SEARCH_RESULTS", "5"))
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "network-assistant")
-DEBUG_MODE = os.getenv("DEBUG_MODE", "False").lower() == "true"
+# --- Configuration ---
+DOCS_DIR = "./network_docs"
+DB_DIR = "./chroma_db"
+CHUNK_SIZE = 512
+CHUNK_OVERLAP = 50
+SEARCH_RESULTS = 5
+OLLAMA_HOST = "http://10.13.37.233:11434"  # Your desktop IP where Ollama is running
+OLLAMA_MODEL = "network-assistant"  # Model to use
 
 # Safely import ChromaDB with Python 3.12 compatibility
 try:
@@ -114,63 +110,172 @@ def split_into_chunks(text, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
     return chunks
 
 
-def index_documents(docs_dir=DOCS_DIR, force_reindex=False):
+def get_document_status(docs_dir, collection, chroma_available):
+    """
+    Get the status of all documents - indexed, unindexed, and modified.
+    
+    Returns:
+    {
+        "indexed": [list of indexed files],
+        "unindexed": [list of unindexed files],
+        "modified": [list of modified files],
+        "needs_indexing": boolean
+    }
+    """
+    indexed_files = []
+    unindexed_files = []
+    modified_files = []
+    
+    # Create docs directory if it doesn't exist
+    os.makedirs(docs_dir, exist_ok=True)
+    
+    # Path to the document tracking file
+    tracking_file = os.path.join(docs_dir, ".doc_tracking.json")
+    
+    # Load existing tracking data if available
+    tracking_data = {}
+    if os.path.exists(tracking_file):
+        try:
+            with open(tracking_file, 'r', encoding='utf-8') as f:
+                tracking_data = json.load(f)
+        except Exception as e:
+            print(f"Error loading tracking data: {e}")
+    
+    # Scan all documents in the directory
+    doc_files = []
+    for root, _, files in os.walk(docs_dir):
+        for file in files:
+            if file.startswith('.'):  # Skip hidden files
+                continue
+                
+            file_path = os.path.join(root, file)
+            if file_path.endswith((".txt", ".md", ".yaml", ".yml")):
+                doc_files.append(file_path)
+    
+    # Update tracking for all current files
+    new_tracking_data = {}
+    
+    for file_path in doc_files:
+        rel_path = os.path.relpath(file_path, docs_dir)
+        file_id = hashlib.md5(file_path.encode()).hexdigest()
+        
+        # Get current file info
+        try:
+            mtime = os.path.getmtime(file_path)
+            size = os.path.getsize(file_path)
+            file_info = {
+                "mtime": mtime,
+                "size": size,
+                "id": file_id
+            }
+            new_tracking_data[rel_path] = file_info
+            
+            # Check if file is indexed
+            is_indexed = False
+            if chroma_available and collection is not None:
+                try:
+                    # Check if at least one chunk exists in the collection
+                    result = collection.get(ids=[file_id + "_0"])
+                    is_indexed = bool(result["ids"])
+                except Exception:
+                    is_indexed = False
+            
+            # Check if file has been modified since last indexing
+            is_modified = False
+            if rel_path in tracking_data:
+                old_info = tracking_data[rel_path]
+                if old_info["mtime"] != mtime or old_info["size"] != size:
+                    is_modified = True
+            
+            # Categorize the file
+            if is_indexed and not is_modified:
+                indexed_files.append(rel_path)
+            elif is_indexed and is_modified:
+                modified_files.append(rel_path)
+            else:
+                unindexed_files.append(rel_path)
+                
+        except Exception as e:
+            print(f"Error processing file {file_path}: {e}")
+            unindexed_files.append(rel_path)
+    
+    # Save updated tracking data
+    try:
+        with open(tracking_file, 'w', encoding='utf-8') as f:
+            json.dump(new_tracking_data, f, indent=2)
+    except Exception as e:
+        print(f"Error saving tracking data: {e}")
+    
+    # Return the document status
+    return {
+        "indexed": sorted(indexed_files),
+        "unindexed": sorted(unindexed_files),
+        "modified": sorted(modified_files),
+        "needs_indexing": len(unindexed_files) > 0 or len(modified_files) > 0
+    }
+
+
+def index_documents(docs_dir=DOCS_DIR, specific_files=None):
     """
     Index all documentation files into the vector database
-
+    
     Parameters:
     - docs_dir: Directory containing documents to index
-    - force_reindex: If True, reindex all documents even if previously indexed
+    - specific_files: List of specific file paths to index (relative to docs_dir)
+    
+    Returns:
+    {
+        "status": "success" or "error",
+        "indexed": Number of new files indexed,
+        "updated": Number of existing files updated,
+        "skipped": Number of files skipped,
+        "error": Error message (if any)
+    }
     """
     if not CHROMA_AVAILABLE or collection is None:
-        return {"error": "ChromaDB not available", "indexed": 0}
+        return {"status": "error", "error": "ChromaDB not available", "indexed": 0, "updated": 0, "skipped": 0}
 
     files_indexed = 0
     files_updated = 0
+    files_skipped = 0
     os.makedirs(docs_dir, exist_ok=True)
-
-    # Get list of all files
-    for file_path in glob.glob(f"{docs_dir}/**/*.*", recursive=True):
-        file_path = os.path.normpath(file_path)
-
-        # Skip files that are not supported
-        if not file_path.endswith((".txt", ".md", ".yaml", ".yml")):
-            continue
-
-        file_id = hashlib.md5(file_path.encode()).hexdigest()
-
-        # Get file modification time
+    
+    # Get document status
+    doc_status = get_document_status(docs_dir, collection, CHROMA_AVAILABLE)
+    
+    # Determine which files to process
+    files_to_process = []
+    if specific_files:
+        # Convert relative paths to absolute
+        for rel_path in specific_files:
+            abs_path = os.path.join(docs_dir, rel_path)
+            if os.path.exists(abs_path):
+                files_to_process.append(abs_path)
+    else:
+        # Process unindexed and modified files
+        for rel_path in doc_status["unindexed"] + doc_status["modified"]:
+            files_to_process.append(os.path.join(docs_dir, rel_path))
+    
+    # Process each file
+    for file_path in files_to_process:
         try:
-            mtime = os.path.getmtime(file_path)
-        except OSError:
-            mtime = 0
-
-        # Check if file is already indexed and get its metadata
-        indexed_mtime = None
-        try:
-            existing = collection.get(ids=[file_id + "_0"])
-            if existing and existing["ids"] and not force_reindex:
-                # Try to get the modification time from metadata
-                if existing.get("metadatas") and existing["metadatas"][0]:
-                    indexed_mtime = existing["metadatas"][0].get("mtime")
-
-                # If file hasn't been modified since indexing, skip it
-                if indexed_mtime is not None and float(indexed_mtime) >= mtime:
-                    continue
-                else:
-                    # File has been modified, delete old entries to reindex
-                    try:
-                        # Find all chunks with this file_id prefix
-                        all_ids = collection.get(where={"source": file_path})
-                        if all_ids and all_ids["ids"]:
-                            collection.delete(ids=all_ids["ids"])
-                    except Exception as e:
-                        print(f"Error removing old chunks for {file_path}: {e}")
-        except Exception:
-            # Not found or error, continue to index
-            pass
-
-        try:
+            file_path = os.path.normpath(file_path)
+            file_id = hashlib.md5(file_path.encode()).hexdigest()
+            rel_path = os.path.relpath(file_path, docs_dir)
+            
+            # Check if this file was previously indexed
+            is_update = rel_path in doc_status["modified"]
+            
+            # If this is an update, remove old entries first
+            if is_update:
+                try:
+                    # Find all chunks with this file_id prefix
+                    results = collection.get(where={"source": file_path})
+                    if results and results["ids"]:
+                        collection.delete(ids=results["ids"])
+                except Exception as e:
+                    print(f"Error removing old chunks for {file_path}: {e}")
+            
             # Process file based on extension
             if file_path.endswith((".txt", ".md")):
                 with open(file_path, "r", encoding="utf-8") as f:
@@ -179,16 +284,17 @@ def index_documents(docs_dir=DOCS_DIR, force_reindex=False):
                 # Split into smaller chunks with overlap
                 chunks = split_into_chunks(content)
 
-                # Add chunks to collection with modification time
+                # Get current modification time
+                mtime = str(os.path.getmtime(file_path))
+                
+                # Add chunks to collection
                 for i, chunk in enumerate(chunks):
                     chunk_id = f"{file_id}_{i}"
                     try:
                         collection.add(
                             ids=[chunk_id],
                             documents=[chunk],
-                            metadatas=[
-                                {"source": file_path, "chunk": i, "mtime": str(mtime)}
-                            ],
+                            metadatas=[{"source": file_path, "chunk": i, "mtime": mtime}],
                         )
                     except Exception as e:
                         print(f"Error adding chunk {i} from {file_path}: {e}")
@@ -200,31 +306,38 @@ def index_documents(docs_dir=DOCS_DIR, force_reindex=False):
                         data = yaml.safe_load(f)
                         content = json.dumps(data, indent=2)
 
+                        # Get current modification time
+                        mtime = str(os.path.getmtime(file_path))
+                        
                         collection.add(
                             ids=[file_id],
                             documents=[content],
-                            metadatas=[
-                                {
-                                    "source": file_path,
-                                    "type": "config",
-                                    "mtime": str(mtime),
-                                }
-                            ],
+                            metadatas=[{"source": file_path, "type": "config", "mtime": mtime}],
                         )
                     except Exception as e:
                         print(f"Error processing YAML file {file_path}: {e}")
                         continue
-
-            if indexed_mtime is not None:
+            else:
+                # Skip files with unsupported extensions
+                files_skipped += 1
+                continue
+                
+            # Update counters
+            if is_update:
                 files_updated += 1
             else:
                 files_indexed += 1
-
+                
         except Exception as e:
             print(f"Error processing file {file_path}: {e}")
-            continue
+            files_skipped += 1
 
-    return {"status": "success", "indexed": files_indexed, "updated": files_updated}
+    return {
+        "status": "success", 
+        "indexed": files_indexed, 
+        "updated": files_updated, 
+        "skipped": files_skipped
+    }
 
 
 def query_vector_db(query, n_results=SEARCH_RESULTS):
@@ -248,65 +361,22 @@ def query_vector_db(query, n_results=SEARCH_RESULTS):
         return "Error retrieving context from database."
 
 
-# Track conversation state
-class ConversationState:
+# Track conversation history
+class ConversationTracker:
     def __init__(self):
-        self.conversations = {}  # session_id -> conversation data
-
-    def get_or_create(self, session_id):
+        self.conversations = {}  # session_id -> conversation history
+        
+    def add_message(self, session_id, role, content):
         if session_id not in self.conversations:
-            self.conversations[session_id] = {
-                "history": [],
-                "gathering_info": False,
-                "problem_type": None,
-                "gathered_details": {},
-                "required_details": {},
-            }
-        return self.conversations[session_id]
+            self.conversations[session_id] = []
+        
+        self.conversations[session_id].append({"role": role, "content": content})
+        
+    def get_conversation(self, session_id):
+        return self.conversations.get(session_id, [])
 
-
-# Initialize state manager
-conversation_state = ConversationState()
-
-# Default questions as fallback
-DEFAULT_QUESTIONS = {
-    "connectivity": {
-        "device_type": "What type of device are you troubleshooting? (e.g., router, switch, server)",
-        "ip_address": "What is the IP address of the device?",
-        "connection_type": "Is this a wired or wireless connection?",
-        "error_message": "Are there any specific error messages you're seeing?",
-    },
-    "performance": {
-        "affected_services": "Which services are experiencing performance issues?",
-        "when_started": "When did the performance issues begin?",
-        "load_changes": "Has there been any change in network load recently?",
-        "monitoring_data": "Do you have any monitoring data showing the issue?",
-    },
-    "security": {
-        "alert_type": "What type of security alert or concern are you seeing?",
-        "affected_systems": "Which systems are affected?",
-        "observed_behavior": "What unusual behavior have you observed?",
-        "recent_changes": "Were there any recent changes to your security configuration?",
-    },
-    "configuration": {
-        "device_info": "What device are you trying to configure?",
-        "current_config": "What is the current configuration?",
-        "desired_config": "What configuration change are you trying to make?",
-        "previous_attempts": "What have you tried so far?",
-    },
-    "hardware": {
-        "device_model": "What is the make and model of the device?",
-        "symptoms": "What symptoms is the device showing?",
-        "age": "How old is the device?",
-        "environment": "Are there any environmental factors (heat, moisture, etc.)?",
-    },
-    "software": {
-        "application": "Which application or service is having issues?",
-        "version": "What version of the software are you running?",
-        "recent_changes": "Were there any recent updates or changes?",
-        "error_logs": "Are there any relevant logs or error messages?",
-    },
-}
+# Initialize conversation tracker
+conversation_tracker = ConversationTracker()
 
 
 # --- Web Routes ---
@@ -317,300 +387,142 @@ def index():
 
 @app.route("/index_docs", methods=["POST"])
 def index_endpoint():
+    """Index documents into the vector database"""
     try:
-        # Check if force reindex is requested
-        data = request.json or {}
-        force_reindex = data.get("force_reindex", False)
-
-        result = index_documents(force_reindex=force_reindex)
-
-        # Add total count for UI
-        if "indexed" in result and "updated" in result:
-            result["total"] = result["indexed"] + result["updated"]
-
+        # Check if specific files were requested
+        specific_files = None
+        if request.is_json:
+            data = request.get_json()
+            if data and "files" in data:
+                specific_files = data["files"]
+        
+        # Call the indexing function
+        result = index_documents(specific_files=specific_files)
         return jsonify(result)
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)})
+        print(f"Error in index_docs endpoint: {e}")
+        return jsonify({
+            "status": "error",
+            "error": str(e),
+            "indexed": 0,
+            "updated": 0,
+            "skipped": 0
+        })
 
 
-@app.route("/determine_questions", methods=["POST"])
-def determine_questions():
-    """Dynamically determine what questions to ask based on the issue"""
+@app.route("/document_status", methods=["GET"])
+def document_status_endpoint():
+    """Return status information about indexed and unindexed documents"""
     try:
-        data = request.json
-        initial_description = data.get("description", "")
-        problem_type = data.get("problem_type", "")
+        status = get_document_status(DOCS_DIR, collection, CHROMA_AVAILABLE)
+        
+        # Add summary counts
+        status["counts"] = {
+            "indexed": len(status["indexed"]),
+            "unindexed": len(status["unindexed"]),
+            "modified": len(status["modified"]),
+            "total": len(status["indexed"]) + len(status["unindexed"]) + len(status["modified"])
+        }
+        
+        return jsonify(status)
+    except Exception as e:
+        print(f"Error in document_status endpoint: {e}")
+        return jsonify({
+            "error": str(e),
+            "indexed": [],
+            "unindexed": [],
+            "modified": [],
+            "counts": {"indexed": 0, "unindexed": 0, "modified": 0, "total": 0},
+            "needs_indexing": False
+        })
 
-        # Build a prompt for the LLM to determine needed information
-        prompt = f"""
-You are a network troubleshooting assistant. A user has described a {problem_type} issue:
-"{initial_description}"
 
-List the specific information you need to troubleshoot this issue effectively. 
-Format your response as a JSON object with question IDs as keys and the questions as values.
-Only include essential diagnostic questions (maximum 5).
-
-Example format:
-{{
-  "device_info": "What type of device are you troubleshooting?",
-  "connection_type": "Is this a wired or wireless connection?",
-  ...
-}}
-"""
-
-        # Call Ollama to generate the questions
+@app.route("/status", methods=["GET"])
+def status_endpoint():
+    """Return status information about the application"""
+    # Count indexed documents
+    indexed_docs = 0
+    if CHROMA_AVAILABLE and collection is not None:
         try:
-            response = requests.post(
-                f"{OLLAMA_HOST}/api/generate",
-                json={
-                    "model": OLLAMA_MODEL,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {"temperature": 0.2},
-                },
-                timeout=30,
-            )
-
-            if response.status_code != 200:
-                return jsonify(
-                    {
-                        "error": f"Error from Ollama API: {response.text}",
-                        "questions": DEFAULT_QUESTIONS.get(problem_type, {}),
-                    }
-                )
-
-            result = response.json()
-            questions_text = result.get("response", "")
-
-            # Extract JSON object from the response
-            json_match = re.search(r"({.*})", questions_text, re.DOTALL)
-            if json_match:
-                questions_json = json_match.group(1)
-                try:
-                    questions = json.loads(questions_json)
-                    return jsonify({"questions": questions})
-                except json.JSONDecodeError:
-                    # Fallback to default questions if JSON parsing fails
-                    return jsonify(
-                        {"questions": DEFAULT_QUESTIONS.get(problem_type, {})}
-                    )
-            else:
-                return jsonify({"questions": DEFAULT_QUESTIONS.get(problem_type, {})})
-
+            all_ids = collection.get()
+            if all_ids and "ids" in all_ids:
+                indexed_docs = len(all_ids["ids"])
         except Exception as e:
-            return jsonify(
-                {
-                    "error": f"Error determining questions: {str(e)}",
-                    "questions": DEFAULT_QUESTIONS.get(problem_type, {}),
-                }
-            )
-
-    except Exception as e:
-        return jsonify(
-            {
-                "error": f"Error in determine_questions endpoint: {str(e)}",
-                "questions": {},
-            }
-        )
-
-
-# Helper functions for information gathering system
-def detect_problem_type(message):
-    """Determine what kind of network issue the user is describing with more detail"""
-    # Don't detect problem type for initial greeting or very short messages
-    if (
-        len(message.strip()) < 15
-        or "hello" in message.lower()
-        or "hi " in message.lower()
-    ):
-        return None
-
-    # Use the LLM to classify the problem type and extract key details
-    prompt = f"""
-Analyze this network issue description: "{message}"
-What type of network problem is this? Classify as one of:
-- connectivity (connection issues, can't reach resources)
-- performance (slowness, latency, bandwidth problems)
-- security (breaches, suspicious activity, access issues)
-- configuration (setup problems, misconfiguration)
-- hardware (physical device failures)
-- software (application or service issues)
-- other (if it doesn't fit the above categories)
-- none (if no specific network problem is described yet)
-
-Respond with only the category name in lowercase.
-"""
-
+            print(f"Error getting document count: {e}")
+    
+    # Get document files
+    doc_files = []
     try:
-        response = requests.post(
-            f"{OLLAMA_HOST}/api/generate",
-            json={
-                "model": OLLAMA_MODEL,
-                "prompt": prompt,
-                "stream": False,
-                "options": {"temperature": 0.2},
-            },
-            timeout=10,
-        )
-
-        if response.status_code == 200:
-            result = response.json()
-            problem_type = result.get("response", "").strip().lower()
-
-            # Basic validation that we got a valid category
-            valid_types = [
-                "connectivity",
-                "performance",
-                "security",
-                "configuration",
-                "hardware",
-                "software",
-                "other",
-                "none",
-            ]
-
-            if problem_type in valid_types:
-                # Return None if the model indicates no problem is described yet
-                if problem_type == "none":
-                    return None
-                return problem_type
-    except Exception as e:
-        print(f"Error classifying problem type: {e}")
-
-    # Fallback to keyword-based detection
-    message_lower = message.lower()
-
-    # Skip detection for greetings or short messages
-    if "hello" in message_lower or "hi " in message_lower or len(message_lower) < 20:
-        return None
-
-    if any(
-        word in message_lower for word in ["connect", "reach", "ping", "access", "down"]
-    ):
-        return "connectivity"
-    elif any(
-        word in message_lower
-        for word in ["slow", "performance", "latency", "bandwidth", "speed"]
-    ):
-        return "performance"
-    elif any(
-        word in message_lower
-        for word in ["security", "breach", "attack", "vulnerability", "suspicious"]
-    ):
-        return "security"
-    elif any(
-        word in message_lower
-        for word in ["configure", "setup", "install", "change", "settings"]
-    ):
-        return "configuration"
-
-    return None  # Don't assume a problem type if we can't detect one
-
-
-def get_next_question(state):
-    """Get the next question to ask based on what information is still needed"""
-    if not state["required_details"]:
-        return "I have all the information I need. Let me analyze your issue."
-
-    # Get the next detail key and question
-    detail_key = next(iter(state["required_details"]))
-    question = state["required_details"][detail_key]
-
-    return f"{question}"
-
-
-def store_detail_from_answer(state, answer):
-    """Store the user's answer to the previous question"""
-    if not state["required_details"]:
-        return
-
-    # Get the key for the detail we just asked about
-    detail_key = next(iter(state["required_details"]))
-
-    # Store the answer
-    state["gathered_details"][detail_key] = answer
-
-    # Remove this detail from required_details
-    state["required_details"].pop(detail_key)
-
-
-def construct_detailed_query(state):
-    """Create a detailed query based on all gathered information"""
-    problem_type = state["problem_type"]
-    details = state["gathered_details"]
-
-    query = f"Network {problem_type} issue with the following details:\n"
-    for key, value in details.items():
-        query += f"{key}: {value}\n"
-
-    return query
-
-
-def construct_informed_prompt(query, context, state):
-    """Create a detailed prompt for the LLM with all gathered information"""
-    history_prompt = "Conversation history:\n"
-    for message in state["history"]:
-        role = "User" if message["role"] == "user" else "Assistant"
-        history_prompt += f"{role}: {message['content']}\n"
-
-    system_instruction = f"""
-You are a network troubleshooting assistant. You've gathered the following information about 
-the user's {state['problem_type']} issue:
-
-"""
-
-    for key, value in state["gathered_details"].items():
-        system_instruction += f"- {key}: {value}\n"
-
-    if context:
-        prompt = f"{system_instruction}\n\nHere is some relevant information from the knowledge base:\n\n{context}\n\n{history_prompt}\n\nBased on all this information, provide troubleshooting steps and a solution to the user's network issue."
-    else:
-        prompt = f"{system_instruction}\n\n{history_prompt}\n\nBased on this information, provide troubleshooting steps and a solution to the user's network issue."
-
-    return prompt
-
-
-@app.route("/get_docs_status", methods=["GET"])
-def get_docs_status():
-    """Get status of available documents and whether they're indexed"""
-    try:
-        # Create docs directory if it doesn't exist
-        os.makedirs(DOCS_DIR, exist_ok=True)
-
-        # Get all files in the docs directory
-        all_files = []
         for file_path in glob.glob(f"{DOCS_DIR}/**/*.*", recursive=True):
-            file_path = os.path.normpath(file_path)
             if file_path.endswith((".txt", ".md", ".yaml", ".yml")):
-                file_id = hashlib.md5(file_path.encode()).hexdigest()
-
-                # Check if file is indexed
-                is_indexed = False
-                if CHROMA_AVAILABLE and collection is not None:
-                    try:
-                        existing = collection.get(ids=[file_id + "_0"])
-                        if existing and existing["ids"]:
-                            is_indexed = True
-                    except Exception:
-                        pass
-
-                all_files.append(
-                    {
-                        "path": file_path,
-                        "name": os.path.basename(file_path),
-                        "indexed": is_indexed,
-                    }
-                )
-
-        return jsonify(
-            {
-                "status": "success",
-                "files": all_files,
-                "chroma_available": CHROMA_AVAILABLE,
-            }
-        )
+                doc_files.append(os.path.basename(file_path))
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)})
+        print(f"Error listing documents: {e}")
+    
+    # Get model information from Ollama
+    model_info = {
+        "name": OLLAMA_MODEL,
+        "base": "Unknown",
+        "size": ""
+    }
+    
+    try:
+        # Call Ollama API with POST method (important!)
+        response = requests.post(f"{OLLAMA_HOST}/api/show", json={"name": OLLAMA_MODEL})
+        
+        if response.status_code == 200:
+            model_data = response.json()
+            
+            # Extract base model information
+            if "details" in model_data:
+                details = model_data["details"]
+                if "parent_model" in details:
+                    model_info["base"] = details["parent_model"]
+                elif "family" in details:
+                    model_info["base"] = details["family"]
+                
+                # Get parameter size
+                if "parameter_size" in details:
+                    model_info["size"] = details["parameter_size"]
+            
+            # Try extracting from model_info if still unknown
+            if model_info["base"] == "Unknown" and "model_info" in model_data:
+                info = model_data["model_info"]
+                if "general.basename" in info:
+                    model_info["base"] = info["general.basename"]
+                
+                if "general.parameter_count" in info:
+                    try:
+                        count = int(info["general.parameter_count"])
+                        model_info["size"] = f"{count / 1_000_000_000:.1f}B"
+                    except:
+                        pass
+            
+            # Try extracting from modelfile as a fallback
+            if model_info["base"] == "Unknown" and "modelfile" in model_data:
+                for line in model_data["modelfile"].split("\n"):
+                    if line.startswith("FROM "):
+                        from_value = line.replace("FROM ", "").strip()
+                        # Only use if it's not a blob SHA or path
+                        if not ("sha256" in from_value or "\\" in from_value or "/" in from_value):
+                            model_info["base"] = from_value
+                            break
+    
+    except Exception as e:
+        print(f"Error getting model information: {e}")
+    
+    # Format the base model with size if available
+    if model_info["size"] and model_info["base"] != "Unknown":
+        model_info["base"] = f"{model_info['base']} ({model_info['size']})"
+    
+    return jsonify({
+        "chroma_available": CHROMA_AVAILABLE,
+        "ollama_host": OLLAMA_HOST,
+        "ollama_model": OLLAMA_MODEL,
+        "model_base": model_info["base"],
+        "indexed_docs": indexed_docs,
+        "doc_files": doc_files
+    })
 
 
 @app.route("/chat", methods=["POST"])
@@ -619,231 +531,43 @@ def chat():
         data = request.json
         message = data.get("message", "")
         session_id = data.get("session_id", "default")
-
-        # Get or create conversation state
-        state = conversation_state.get_or_create(session_id)
-        state["history"].append({"role": "user", "content": message})
-
-        # Check if this is an initial greeting that needs a simple response without information gathering
-        message_lower = message.lower()
-        if len(state["history"]) <= 1 and (
-            message_lower.startswith("hi")
-            or message_lower.startswith("hello")
-            or message_lower.startswith("hey")
-            or len(message_lower) < 10
-        ):
-
-            # Respond with a greeting without accessing the knowledge base
-            greeting_response = (
-                "I'm ready to help. Go ahead and ask your networking question!"
-            )
-            state["history"].append({"role": "assistant", "content": greeting_response})
-
-            return jsonify(
-                {
-                    "response": greeting_response,
-                    "gathering_info": False,
-                    "context_used": False,
-                    "sources": [],
-                }
-            )
-
-        # Check if we need to start information gathering
-        if not state["gathering_info"] and not state["problem_type"]:
-            # Detect problem type
-            problem_type = detect_problem_type(message)
-
-            if problem_type and problem_type != "other":
-                # Dynamically determine required questions
-                try:
-                    # Use the application URL to call our own endpoint
-                    server_url = request.host_url.rstrip("/")
-                    questions_response = requests.post(
-                        f"{server_url}/determine_questions",
-                        json={"description": message, "problem_type": problem_type},
-                        timeout=30,
-                    )
-
-                    if questions_response.status_code == 200:
-                        questions_data = questions_response.json()
-                        required_details = questions_data.get("questions", {})
-
-                        if required_details:
-                            state["gathering_info"] = True
-                            state["problem_type"] = problem_type
-                            state["required_details"] = required_details
-
-                            # Ask the first question
-                            next_question = get_next_question(state)
-                            state["history"].append(
-                                {"role": "assistant", "content": next_question}
-                            )
-
-                            return jsonify(
-                                {
-                                    "response": next_question,
-                                    "gathering_info": True,
-                                    "context_used": False,
-                                    "sources": [],
-                                }
-                            )
-                    else:
-                        # If dynamic question generation fails, fall back to default questions
-                        if problem_type in DEFAULT_QUESTIONS:
-                            state["gathering_info"] = True
-                            state["problem_type"] = problem_type
-                            state["required_details"] = DEFAULT_QUESTIONS[
-                                problem_type
-                            ].copy()
-
-                            # Ask the first question
-                            next_question = get_next_question(state)
-                            state["history"].append(
-                                {"role": "assistant", "content": next_question}
-                            )
-
-                            return jsonify(
-                                {
-                                    "response": next_question,
-                                    "gathering_info": True,
-                                    "context_used": False,
-                                    "sources": [],
-                                }
-                            )
-
-                except Exception as e:
-                    print(f"Error getting dynamic questions: {e}")
-                    # Try fallback to static questions
-                    if problem_type in DEFAULT_QUESTIONS:
-                        state["gathering_info"] = True
-                        state["problem_type"] = problem_type
-                        state["required_details"] = DEFAULT_QUESTIONS[
-                            problem_type
-                        ].copy()
-
-                        # Ask the first question
-                        next_question = get_next_question(state)
-                        state["history"].append(
-                            {"role": "assistant", "content": next_question}
-                        )
-
-                        return jsonify(
-                            {
-                                "response": next_question,
-                                "gathering_info": True,
-                                "context_used": False,
-                                "sources": [],
-                            }
-                        )
-
-        # Continue information gathering if in progress
-        if state["gathering_info"]:
-            # Store the answer to the previous question
-            store_detail_from_answer(state, message)
-
-            # Check if we need more information
-            if state["required_details"]:
-                # Ask the next question
-                next_question = get_next_question(state)
-                state["history"].append({"role": "assistant", "content": next_question})
-
-                return jsonify(
-                    {
-                        "response": next_question,
-                        "gathering_info": True,
-                        "context_used": False,
-                        "sources": [],
-                    }
-                )
-            else:
-                # We have all required information, proceed with troubleshooting
-                state["gathering_info"] = False
-
-                # Construct a detailed query based on gathered information
-                detailed_query = construct_detailed_query(state)
-
-                # The rest proceeds as in the original chat function...
-                context = query_vector_db(detailed_query)
-
-                if context and len(context.strip()) > 10:
-                    prompt = construct_informed_prompt(detailed_query, context, state)
-                else:
-                    prompt = construct_informed_prompt(detailed_query, None, state)
-
-                # Call Ollama with the detailed prompt
-                try:
-                    response = requests.post(
-                        f"{OLLAMA_HOST}/api/generate",
-                        json={
-                            "model": OLLAMA_MODEL,
-                            "prompt": prompt,
-                            "stream": False,
-                            "options": {"temperature": 0.7},
-                        },
-                        timeout=60,
-                    )
-
-                    if response.status_code != 200:
-                        return jsonify(
-                            {
-                                "response": f"Error from Ollama API: {response.text}",
-                                "gathering_info": False,
-                                "context_used": bool(context),
-                                "sources": [],
-                            }
-                        )
-
-                    result = response.json()
-                    assistant_response = result.get("response", "")
-
-                except Exception as e:
-                    assistant_response = f"Error running Ollama: {str(e)}"
-
-                # Get sources
-                sources = []
-                if CHROMA_AVAILABLE and collection is not None:
-                    try:
-                        results = collection.query(query_texts=[detailed_query])
-                        if results.get("metadatas") and results["metadatas"][0]:
-                            sources = [
-                                os.path.basename(m["source"])
-                                for m in results["metadatas"][0]
-                            ]
-                    except Exception as e:
-                        print(f"Error getting sources: {e}")
-
-                state["history"].append(
-                    {"role": "assistant", "content": assistant_response}
-                )
-
-                return jsonify(
-                    {
-                        "response": assistant_response,
-                        "gathering_info": False,
-                        "context_used": bool(context),
-                        "sources": sources,
-                    }
-                )
-
-        # If not gathering info, handle as general query
-        # Add instruction to prevent making assumptions
-        prompt_prefix = """
-You are a network troubleshooting assistant. The user is asking a question:
-
-"""
-        # Only access the knowledge base if the question is substantial enough
-        if len(message.strip()) >= 15 and not any(
-            greeting in message.lower() for greeting in ["hello", "hi ", "hey"]
-        ):
-            context = query_vector_db(message)
-        else:
-            context = ""
-
+        
+        # Add message to conversation history
+        conversation_tracker.add_message(session_id, "user", message)
+        
+        # Get relevant context from the vector database
+        context = query_vector_db(message)
+        
+        # Prepare system prompt with conversation history
+        history = conversation_tracker.get_conversation(session_id)
+        history_prompt = "\nConversation history:\n"
+        for msg in history:
+            role = "User" if msg["role"] == "user" else "Assistant"
+            history_prompt += f"{role}: {msg['content']}\n"
+        
+        # Build the full prompt for Ollama
         if context and len(context.strip()) > 10:
-            prompt = f"{prompt_prefix}\n{message}\n\nHere is some relevant information from the knowledge base:\n\n{context}\n\nProvide a helpful response but do NOT make assumptions about their network unless explicitly stated in their question. Do not refer to wireless issues unless the user has specifically mentioned wireless networks."
-        else:
-            prompt = f"{prompt_prefix}\n{message}\n\nRespond helpfully without making assumptions about their network. Keep the response general unless the user has provided specific details."
+            prompt = f"""You are a helpful network troubleshooting assistant. 
+Here's some context from the knowledge base that might be relevant:
 
+{context}
+
+{history_prompt}
+
+User's latest message: {message}
+
+Respond in a helpful and informative way. All troubleshooting should be done through natural conversation.
+"""
+        else:
+            prompt = f"""You are a helpful network troubleshooting assistant.
+
+{history_prompt}
+
+User's latest message: {message}
+
+Respond in a helpful and informative way. All troubleshooting should be done through natural conversation.
+"""
+        
         # Call the Ollama API
         try:
             response = requests.post(
@@ -852,77 +576,57 @@ You are a network troubleshooting assistant. The user is asking a question:
                     "model": OLLAMA_MODEL,
                     "prompt": prompt,
                     "stream": False,
-                    "options": {"temperature": 0.7},
-                },
-                timeout=60,
-            )
-
-            if response.status_code != 200:
-                return jsonify(
-                    {
-                        "response": f"Error from Ollama API: {response.text}",
-                        "gathering_info": False,
-                        "context_used": bool(context),
-                        "sources": [],
+                    "options": {
+                        "temperature": 0.7
                     }
-                )
-
+                },
+                timeout=60
+            )
+            
+            if response.status_code != 200:
+                return jsonify({
+                    "response": f"Error from Ollama API: {response.text}",
+                    "context_used": bool(context),
+                    "sources": [],
+                })
+                
             result = response.json()
             assistant_response = result.get("response", "")
-
+            
         except Exception as e:
             assistant_response = f"Error running Ollama: {str(e)}"
-
-        # Get sources
+        
+        # Add assistant response to history
+        conversation_tracker.add_message(session_id, "assistant", assistant_response)
+        
+        # Get sources for the frontend
         sources = []
-        if context and CHROMA_AVAILABLE and collection is not None:
+        if CHROMA_AVAILABLE and collection is not None:
             try:
                 results = collection.query(query_texts=[message])
                 if results.get("metadatas") and results["metadatas"][0]:
-                    sources = [
-                        os.path.basename(m["source"]) for m in results["metadatas"][0]
-                    ]
+                    sources = [os.path.basename(m["source"]) for m in results["metadatas"][0]]
             except Exception as e:
                 print(f"Error getting sources: {e}")
-
-        state["history"].append({"role": "assistant", "content": assistant_response})
-
-        return jsonify(
-            {
-                "response": assistant_response,
-                "gathering_info": False,
-                "context_used": bool(context),
-                "sources": sources,
-            }
-        )
-
+        
+        return jsonify({
+            "response": assistant_response,
+            "context_used": bool(context),
+            "sources": sources
+        })
+    
     except Exception as e:
         print(f"Error in chat endpoint: {e}")
-        return jsonify(
-            {
-                "response": f"An error occurred: {str(e)}",
-                "gathering_info": False,
-                "context_used": False,
-                "sources": [],
-            }
-        )
+        return jsonify({
+            "response": f"An error occurred: {str(e)}",
+            "context_used": False,
+            "sources": [],
+        })
 
 
 if __name__ == "__main__":
     # Make sure the docs directory exists
     os.makedirs(DOCS_DIR, exist_ok=True)
-
-    # Print current configuration
-    print("=== Network Troubleshooting Assistant Configuration ===")
-    print(f"DOCS_DIR: {DOCS_DIR}")
-    print(f"DB_DIR: {DB_DIR}")
-    print(f"OLLAMA_HOST: {OLLAMA_HOST}")
-    print(f"OLLAMA_MODEL: {OLLAMA_MODEL}")
-    print(f"CHUNK_SIZE: {CHUNK_SIZE}")
-    print(f"CHUNK_OVERLAP: {CHUNK_OVERLAP}")
-    print(f"SEARCH_RESULTS: {SEARCH_RESULTS}")
-    print(f"DEBUG_MODE: {DEBUG_MODE}")
-    print("====================================================")
 
     # Check if we can connect to Ollama at startup
     try:
@@ -935,4 +639,4 @@ if __name__ == "__main__":
         print(f"WARNING: Could not connect to Ollama at {OLLAMA_HOST}: {e}")
 
     # Start the application
-    app.run(debug=DEBUG_MODE, host="0.0.0.0", port=int(os.getenv("PORT", "5000")))
+    app.run(debug=True, host="0.0.0.0", port=5000)

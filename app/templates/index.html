@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Network Troubleshooting Assistant</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Add Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Add highlight.js for code syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
     <style>
         .chat-message {
             animation: fadeIn 0.3s;
@@ -39,6 +44,75 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #6B7280;
         }
+        .user-message {
+            margin-left: auto; /* Right align user messages */
+            text-align: right;
+        }
+        .assistant-message {
+            margin-right: auto; /* Left align assistant messages */
+            text-align: left;
+        }
+        
+        /* Markdown styling */
+        .markdown-content {
+            line-height: 1.6;
+            word-wrap: break-word;
+        }
+        .markdown-content h1, 
+        .markdown-content h2, 
+        .markdown-content h3, 
+        .markdown-content h4 {
+            font-weight: 600;
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+        }
+        .markdown-content h1 { font-size: 1.5em; }
+        .markdown-content h2 { font-size: 1.3em; }
+        .markdown-content h3 { font-size: 1.1em; }
+        .markdown-content pre {
+            background-color: #1F2937;
+            border-radius: 0.375rem;
+            padding: 0.5rem;
+            overflow-x: auto;
+            margin: 0.5rem 0;
+        }
+        .markdown-content code {
+            background-color: #1F2937;
+            border-radius: 0.25rem;
+            padding: 0.125rem 0.25rem;
+            font-family: monospace;
+        }
+        .markdown-content ul, .markdown-content ol {
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            padding-left: 1.5rem;
+        }
+        .markdown-content ul { list-style-type: disc; }
+        .markdown-content ol { list-style-type: decimal; }
+        .markdown-content p { margin-bottom: 0.5rem; }
+        .markdown-content a {
+            color: #60A5FA;
+            text-decoration: underline;
+        }
+        .markdown-content table {
+            border-collapse: collapse;
+            margin: 0.5rem 0;
+            width: 100%;
+        }
+        .markdown-content table th,
+        .markdown-content table td {
+            border: 1px solid #4B5563;
+            padding: 0.4rem;
+        }
+        .markdown-content table th {
+            background-color: #374151;
+        }
+        .markdown-content blockquote {
+            border-left: 4px solid #4B5563;
+            padding-left: 1rem;
+            color: #D1D5DB;
+            margin: 0.5rem 0;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200 min-h-screen">
@@ -72,7 +146,11 @@
                     <div id="systemInfo" class="text-xs text-gray-400">
                         <div class="flex justify-between mb-1">
                             <span>Model:</span>
-                            <span id="modelInfo" class="text-blue-400"></span>
+                            <span id="modelInfo" class="text-blue-400">Loading...</span>
+                        </div>
+                        <div class="flex justify-between mb-1">
+                            <span>Base:</span>
+                            <span id="modelBase" class="text-blue-400">Loading...</span>
                         </div>
                         <div class="flex justify-between mb-1">
                             <span>Documents:</span>
@@ -90,12 +168,16 @@
             <div class="md:col-span-3">
                 <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col border border-gray-700" style="height: 80vh;">
                     <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-4">
-                        <div class="chat-message bg-gray-700 p-3 rounded-lg inline-block max-w-md">
-                            <p>Hello! I'm your network troubleshooting assistant.</p>
-                            <ol class="list-decimal pl-5 mt-2">
-                                <li>Click "Index Documents" to load your network docs</li>
-                                <li>Then ask me anything about your network environment!</li>
-                            </ol>
+                        <div class="flex flex-col">
+                            <div class="chat-message assistant-message bg-gray-700 p-3 rounded-lg inline-block max-w-md">
+                                <div class="markdown-content">
+                                    <p>Hello! I'm your network troubleshooting assistant.</p>
+                                    <ol>
+                                        <li>Click "Index Documents" to load your network docs</li>
+                                        <li>Then ask me anything about your network environment!</li>
+                                    </ol>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
@@ -132,69 +214,78 @@
             const sendText = document.getElementById('sendText');
             const loadingIndicator = document.getElementById('loadingIndicator');
             const modelInfo = document.getElementById('modelInfo');
+            const modelBase = document.getElementById('modelBase');
             const docsInfo = document.getElementById('docsInfo');
             const chromaInfo = document.getElementById('chromaInfo');
             const connStatus = document.getElementById('connStatus');
             
+            // Set up Marked.js options for security and code highlighting
+            marked.setOptions({
+                renderer: new marked.Renderer(),
+                highlight: function(code, language) {
+                    const validLanguage = hljs.getLanguage(language) ? language : 'plaintext';
+                    return hljs.highlight(validLanguage, code).value;
+                },
+                langPrefix: 'hljs language-',
+                pedantic: false,
+                gfm: true,
+                breaks: true,
+                sanitize: false,
+                smartypants: false,
+                xhtml: false
+            });
+            
             // Generate a random session ID
             const sessionId = Math.random().toString(36).substring(2, 15);
             
-            // Load system info at startup
-            async function loadSystemInfo() {
+            // Check application status
+            async function checkAppStatus() {
                 try {
-                    const response = await fetch('/get_docs_status');
+                    // Fetch status from server
+                    const response = await fetch('/status');
                     const data = await response.json();
                     
-                    if (data.status === 'success') {
-                        // Update documents info
-                        const totalDocs = data.files.length;
-                        const indexedDocs = data.files.filter(file => file.indexed).length;
-                        docsInfo.textContent = `${indexedDocs}/${totalDocs} indexed`;
-                        
-                        // Update ChromaDB status
-                        chromaInfo.textContent = data.chroma_available ? 'Available' : 'Not available';
-                        chromaInfo.className = data.chroma_available ? 'text-green-400' : 'text-red-400';
-                        
-                        // Get Ollama model info (it's shown in the connStatus element)
-                        checkOllamaConnection();
-                    } else {
-                        docsInfo.textContent = 'Error loading info';
-                        chromaInfo.textContent = 'Unknown';
+                    // Update model info
+                    if (data.ollama_model) {
+                        modelInfo.textContent = data.ollama_model;
                     }
-                } catch (error) {
-                    console.error('Error loading system info:', error);
-                    docsInfo.textContent = 'Error loading info';
-                }
-            }
-            
-            // Check Ollama connection status
-            async function checkOllamaConnection() {
-                try {
-                    // Make a simple request to test the connection
-                    const simple_message = "What is your model name?";
-                    const response = await fetch('/chat', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ 
-                            message: simple_message,
-                            session_id: 'system_check'
-                        })
-                    });
                     
-                    const data = await response.json();
-                    connStatus.textContent = `Connected to Ollama: ${modelInfo.textContent || 'Unknown model'}`;
-                    connStatus.className = 'text-xs mt-1 text-green-400';
+                    // Update base model info
+                    if (data.model_base) {
+                        modelBase.textContent = data.model_base;
+                    } else {
+                        modelBase.textContent = "Unknown";
+                    }
+                    
+                    // Update connection status
+                    if (data.ollama_host) {
+                        const modelDisplay = data.model_base !== "Unknown" ? 
+                            `${data.model_base}/${data.ollama_model}` : 
+                            data.ollama_model;
+                        connStatus.textContent = `Connected to Ollama: ${modelDisplay}`;
+                        connStatus.className = "text-xs mt-1 text-green-400";
+                    } else {
+                        connStatus.textContent = "Error connecting to Ollama";
+                        connStatus.className = "text-xs mt-1 text-red-400";
+                    }
+                    
+                    // Update documents info
+                    docsInfo.textContent = `${data.indexed_docs} indexed`;
+                    docsInfo.className = "text-blue-400";
+                    
+                    // Update ChromaDB status
+                    chromaInfo.textContent = data.chroma_available ? "Available" : "Not available";
+                    chromaInfo.className = data.chroma_available ? "text-green-400" : "text-red-400";
+                    
                 } catch (error) {
-                    console.error('Error checking Ollama connection:', error);
-                    connStatus.textContent = 'Warning: Could not connect to Ollama';
-                    connStatus.className = 'text-xs mt-1 text-red-400';
+                    console.error("Error checking application status:", error);
+                    connStatus.textContent = "Error connecting to application";
+                    connStatus.className = "text-xs mt-1 text-red-400";
                 }
             }
             
-            // Load system info at startup
-            loadSystemInfo();
+            // Run startup checks
+            checkAppStatus();
             
             // Chat form submission
             chatForm.addEventListener('submit', async (e) => {
@@ -219,7 +310,7 @@
                         },
                         body: JSON.stringify({ 
                             message,
-                            session_id: sessionId  // Include session ID with each message
+                            session_id: sessionId
                         })
                     });
                     
@@ -228,10 +319,15 @@
                     // Add bot response to chat
                     appendMessage(data.response, 'assistant');
                     
-                    // Update sources list
+                    // Update sources list with deduplication
                     if (data.sources && data.sources.length > 0) {
                         sourcesList.innerHTML = '';
-                        data.sources.forEach(source => {
+                        
+                        // Create a Set to deduplicate sources
+                        const uniqueSources = new Set(data.sources);
+                        
+                        // Convert back to array and sort for consistent display
+                        Array.from(uniqueSources).sort().forEach(source => {
                             const li = document.createElement('li');
                             li.textContent = source;
                             li.className = 'text-blue-400 hover:underline cursor-pointer';
@@ -239,15 +335,6 @@
                         });
                     }
                     
-                    // Get model info if it's the first message
-                    if (!modelInfo.textContent && data.response) {
-                        modelInfo.textContent = 'network-assistant';
-                    }
-                    
-                    // If in information gathering mode, auto-focus the input field
-                    if (data.gathering_info) {
-                        messageInput.focus();
-                    }
                 } catch (error) {
                     console.error('Error:', error);
                     appendMessage('Sorry, there was an error processing your request.', 'assistant', true);
@@ -256,6 +343,9 @@
                 // Hide loading state
                 sendText.classList.remove('hidden');
                 loadingIndicator.classList.add('hidden');
+                
+                // Focus input field for next message
+                messageInput.focus();
             });
             
             // Index documents
@@ -274,15 +364,16 @@
                         indexStatus.textContent = data.error;
                         indexStatus.className = 'mt-2 text-sm text-red-400';
                     } else {
-                        if (data.total !== undefined) {
-                            indexStatus.textContent = `Indexed ${data.indexed} new, updated ${data.updated} existing documents.`;
-                        } else {
-                            indexStatus.textContent = `Indexed ${data.indexed} documents successfully.`;
-                        }
+                        indexStatus.textContent = `Indexed ${data.indexed} documents successfully.`;
                         indexStatus.className = 'mt-2 text-sm text-green-400';
                         
-                        // Refresh system info after indexing
-                        loadSystemInfo();
+                        // Update docs count
+                        if (data.indexed !== undefined) {
+                            docsInfo.textContent = `${data.indexed} indexed`;
+                        }
+                        
+                        // Refresh status
+                        checkAppStatus();
                     }
                 } catch (error) {
                     console.error('Error:', error);
@@ -293,26 +384,37 @@
                 indexDocsBtn.disabled = false;
             });
             
-            // Handle adding messages to the chat
+            // Handle adding messages to the chat with Markdown rendering
             function appendMessage(content, sender, isError = false) {
+                const messageWrapper = document.createElement('div');
+                messageWrapper.className = 'flex flex-col mb-4';
+                
                 const messageDiv = document.createElement('div');
-                messageDiv.className = 'chat-message ' + 
+                messageDiv.className = 'chat-message p-3 rounded-lg inline-block max-w-md ' + 
                     (sender === 'user' 
-                        ? 'bg-indigo-800 ml-auto' 
-                        : isError ? 'bg-red-900' : 'bg-gray-700') + 
-                    ' p-3 rounded-lg inline-block max-w-md';
+                        ? 'user-message bg-indigo-800' 
+                        : 'assistant-message ' + (isError ? 'bg-red-900' : 'bg-gray-700'));
                 
-                // Handle markdown-style code blocks
-                let formattedContent = content.replace(/```([^`]+)```/g, '<pre class="bg-gray-900 p-2 rounded text-sm overflow-x-auto my-2 text-gray-300">$1</pre>');
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'markdown-content';
                 
-                // Handle inline code
-                formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code class="bg-gray-900 px-1 rounded text-sm text-gray-300">$1</code>');
+                // Use marked.js to render Markdown
+                if (sender === 'assistant' || sender === 'system') {
+                    // Apply Markdown rendering for assistant messages
+                    contentDiv.innerHTML = marked.parse(content);
+                } else {
+                    // For user messages, just escape HTML and preserve line breaks
+                    contentDiv.textContent = content;
+                }
                 
-                // Handle line breaks
-                formattedContent = formattedContent.replace(/\n/g, '<br>');
+                messageDiv.appendChild(contentDiv);
+                messageWrapper.appendChild(messageDiv);
+                chatMessages.appendChild(messageWrapper);
                 
-                messageDiv.innerHTML = formattedContent;
-                chatMessages.appendChild(messageDiv);
+                // Apply syntax highlighting to code blocks
+                messageDiv.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightBlock(block);
+                });
                 
                 // Scroll to bottom
                 chatMessages.scrollTop = chatMessages.scrollHeight;
