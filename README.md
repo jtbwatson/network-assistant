@@ -11,6 +11,8 @@ A Flask-based web application that provides an interactive network troubleshooti
 - Context-aware responses leveraging your network documentation
 - Environment-based configuration system
 
+*Note: Sample examples of documents are available in the `network_doc_samples` directory.*
+
 ## Setup and Installation
 
 ### Prerequisites
