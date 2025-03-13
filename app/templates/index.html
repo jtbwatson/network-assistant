@@ -269,9 +269,10 @@
                         connStatus.className = "text-xs mt-1 text-red-400";
                     }
                     
-                    // Update documents info
+                    // Update documents info - Make sure this is being updated properly
                     docsInfo.textContent = `${data.indexed_docs} indexed`;
                     docsInfo.className = "text-blue-400";
+                    console.log(`Updated docs info: ${data.indexed_docs} indexed`); // Debug logging
                     
                     // Update ChromaDB status
                     chromaInfo.textContent = data.chroma_available ? "Available" : "Not available";
@@ -364,16 +365,12 @@
                         indexStatus.textContent = data.error;
                         indexStatus.className = 'mt-2 text-sm text-red-400';
                     } else {
+                        // Show success message about newly indexed documents
                         indexStatus.textContent = `Indexed ${data.indexed} documents successfully.`;
                         indexStatus.className = 'mt-2 text-sm text-green-400';
                         
-                        // Update docs count
-                        if (data.indexed !== undefined) {
-                            docsInfo.textContent = `${data.indexed} indexed`;
-                        }
-                        
-                        // Refresh status
-                        checkAppStatus();
+                        // Refresh status to get the updated total count
+                        await checkAppStatus();
                     }
                 } catch (error) {
                     console.error('Error:', error);
