@@ -5,7 +5,7 @@ import re
 import hashlib
 import requests
 import logging
-import warnings
+from datetime import datetime
 from collections import defaultdict
 from flask import Flask, request, render_template, jsonify
 from dotenv import load_dotenv
@@ -13,7 +13,9 @@ from dotenv import load_dotenv
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-logging.getLogger("chromadb.segment.impl.vector.local_persistent_hnsw").setLevel(logging.ERROR)
+logging.getLogger("chromadb.segment.impl.vector.local_persistent_hnsw").setLevel(
+    logging.ERROR
+)
 
 app = Flask(__name__)
 
@@ -456,6 +458,138 @@ def status_endpoint():
             "doc_files": [os.path.basename(p) for p in doc_status["indexed"]],
         }
     )
+
+
+@app.route("/list_docs", methods=["GET"])
+def list_docs_endpoint():
+    """Return a list of all documents in the docs directory"""
+    try:
+        valid_ext = (".txt", ".md", ".yaml", ".yml")
+        doc_files = []
+        for root, _, files in os.walk(DOCS_DIR):
+            for file in files:
+                if not file.startswith(".") and file.endswith(valid_ext):
+                    rel_path = os.path.relpath(os.path.join(root, file), DOCS_DIR)
+                    file_path = os.path.join(DOCS_DIR, rel_path)
+                    try:
+                        mtime = os.path.getmtime(file_path)
+                        size = os.path.getsize(file_path)
+                        doc_files.append(
+                            {
+                                "name": file,
+                                "path": rel_path,
+                                "size": size,
+                                "mtime": mtime,
+                                "modified": datetime.fromtimestamp(mtime).strftime(
+                                    "%Y-%m-%d %H:%M"
+                                ),
+                            }
+                        )
+                    except Exception as e:
+                        logger.error(f"Error getting file info for {file_path}: {e}")
+
+        # Sort files by name
+        doc_files.sort(key=lambda x: x["name"].lower())
+
+        return jsonify({"status": "success", "files": doc_files})
+    except Exception as e:
+        logger.error(f"Error listing docs: {e}")
+        return jsonify({"status": "error", "error": str(e), "files": []})
+
+
+@app.route("/get_doc/<path:file_path>", methods=["GET"])
+def get_doc_endpoint(file_path):
+    """Return contents of a specific document"""
+    try:
+        # Log for debugging
+        logger.info(f"Attempting to open document: {file_path}")
+
+        # Handle URL-encoded paths
+        file_path = file_path.replace("%20", " ")
+
+        # Ensure file path is within DOCS_DIR by checking for path traversal
+        abs_path = os.path.abspath(os.path.join(DOCS_DIR, file_path))
+        logger.info(f"Absolute path resolved to: {abs_path}")
+
+        if not abs_path.startswith(os.path.abspath(DOCS_DIR)):
+            logger.warning(f"Path traversal attempt detected: {file_path}")
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "error": "Invalid file path - attempted path traversal",
+                    }
+                ),
+                403,
+            )
+
+        if not os.path.exists(abs_path):
+            logger.warning(f"File not found: {abs_path}")
+            return (
+                jsonify({"status": "error", "error": f"File not found: {file_path}"}),
+                404,
+            )
+
+        # Get file contents based on extension
+        file_ext = os.path.splitext(abs_path)[1].lower()
+        content = ""
+        content_type = "text"
+
+        logger.info(f"Reading file with extension: {file_ext}")
+
+        if file_ext in (".txt", ".md"):
+            try:
+                with open(abs_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+            except UnicodeDecodeError:
+                # Try with different encoding if UTF-8 fails
+                with open(abs_path, "r", encoding="latin-1") as f:
+                    content = f.read()
+        elif file_ext in (".yaml", ".yml"):
+            with open(abs_path, "r", encoding="utf-8") as f:
+                try:
+                    yaml_content = yaml.safe_load(f)
+                    content = json.dumps(yaml_content, indent=2)
+                    content_type = "yaml"
+                except Exception as e:
+                    logger.error(f"Error parsing YAML: {e}")
+                    return (
+                        jsonify(
+                            {
+                                "status": "error",
+                                "error": f"Error parsing YAML: {str(e)}",
+                            }
+                        ),
+                        400,
+                    )
+        else:
+            logger.warning(f"Unsupported file type: {file_ext}")
+            return (
+                jsonify(
+                    {"status": "error", "error": f"Unsupported file type: {file_ext}"}
+                ),
+                400,
+            )
+
+        logger.info(f"Successfully read file: {file_path}")
+        return jsonify(
+            {
+                "status": "success",
+                "content": content,
+                "name": os.path.basename(abs_path),
+                "type": content_type,
+                "path": file_path,
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error getting document {file_path}: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/doc_viewer")
+def doc_viewer():
+    """Serve the document viewer page"""
+    return render_template("doc_viewer.html")
 
 
 @app.route("/chat", methods=["POST"])

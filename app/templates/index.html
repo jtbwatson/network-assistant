@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,67 +9,99 @@
     <!-- Add Marked.js for Markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <!-- Add highlight.js for code syntax highlighting -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
     <style>
         .chat-message {
             animation: fadeIn 0.3s;
         }
+
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
+
         .loader {
             display: inline-block;
             width: 20px;
             height: 20px;
-            border: 3px solid rgba(255,255,255,.1);
+            border: 3px solid rgba(255, 255, 255, .1);
             border-radius: 50%;
             border-top-color: #60A5FA;
             animation: spin 1s ease-in-out infinite;
         }
+
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
+
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
         }
+
         ::-webkit-scrollbar-track {
             background: #1F2937;
         }
+
         ::-webkit-scrollbar-thumb {
             background: #4B5563;
             border-radius: 4px;
         }
+
         ::-webkit-scrollbar-thumb:hover {
             background: #6B7280;
         }
+
         .user-message {
-            margin-left: auto; /* Right align user messages */
+            margin-left: auto;
+            /* Right align user messages */
             text-align: right;
         }
+
         .assistant-message {
-            margin-right: auto; /* Left align assistant messages */
+            margin-right: auto;
+            /* Left align assistant messages */
             text-align: left;
         }
-        
+
         /* Markdown styling */
         .markdown-content {
             line-height: 1.6;
             word-wrap: break-word;
         }
-        .markdown-content h1, 
-        .markdown-content h2, 
-        .markdown-content h3, 
+
+        .markdown-content h1,
+        .markdown-content h2,
+        .markdown-content h3,
         .markdown-content h4 {
             font-weight: 600;
             margin-top: 1em;
             margin-bottom: 0.5em;
         }
-        .markdown-content h1 { font-size: 1.5em; }
-        .markdown-content h2 { font-size: 1.3em; }
-        .markdown-content h3 { font-size: 1.1em; }
+
+        .markdown-content h1 {
+            font-size: 1.5em;
+        }
+
+        .markdown-content h2 {
+            font-size: 1.3em;
+        }
+
+        .markdown-content h3 {
+            font-size: 1.1em;
+        }
+
         .markdown-content pre {
             background-color: #1F2937;
             border-radius: 0.375rem;
@@ -76,37 +109,54 @@
             overflow-x: auto;
             margin: 0.5rem 0;
         }
+
         .markdown-content code {
             background-color: #1F2937;
             border-radius: 0.25rem;
             padding: 0.125rem 0.25rem;
             font-family: monospace;
         }
-        .markdown-content ul, .markdown-content ol {
+
+        .markdown-content ul,
+        .markdown-content ol {
             margin-top: 0.5rem;
             margin-bottom: 0.5rem;
             padding-left: 1.5rem;
         }
-        .markdown-content ul { list-style-type: disc; }
-        .markdown-content ol { list-style-type: decimal; }
-        .markdown-content p { margin-bottom: 0.5rem; }
+
+        .markdown-content ul {
+            list-style-type: disc;
+        }
+
+        .markdown-content ol {
+            list-style-type: decimal;
+        }
+
+        .markdown-content p {
+            margin-bottom: 0.5rem;
+        }
+
         .markdown-content a {
             color: #60A5FA;
             text-decoration: underline;
         }
+
         .markdown-content table {
             border-collapse: collapse;
             margin: 0.5rem 0;
             width: 100%;
         }
+
         .markdown-content table th,
         .markdown-content table td {
             border: 1px solid #4B5563;
             padding: 0.4rem;
         }
+
         .markdown-content table th {
             background-color: #374151;
         }
+
         .markdown-content blockquote {
             border-left: 4px solid #4B5563;
             padding-left: 1rem;
@@ -115,6 +165,7 @@
         }
     </style>
 </head>
+
 <body class="bg-gray-900 text-gray-200 min-h-screen">
     <div class="container mx-auto px-4 py-8 max-w-5xl">
         <header class="bg-indigo-900 text-white rounded-lg p-4 mb-6 shadow-lg">
@@ -122,25 +173,38 @@
             <p class="text-sm opacity-80">Powered by Ollama and ChromaDB</p>
             <p id="connStatus" class="text-xs mt-1 opacity-70"></p>
         </header>
-        
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <!-- Sidebar -->
             <div class="md:col-span-1">
                 <div class="bg-gray-800 rounded-lg shadow-md p-4 mb-4 border border-gray-700">
                     <h2 class="font-bold text-lg mb-3 text-gray-200">Document Management</h2>
-                    <button id="indexDocs" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 w-full transition-colors">
+                    <button id="indexDocs"
+                        class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 w-full transition-colors">
                         Index Documents
                     </button>
                     <div id="indexStatus" class="mt-2 text-sm text-gray-400"></div>
                 </div>
-                
+
+                <!-- Add this new section below the Document Management section in index.html -->
+                <div class="bg-gray-800 rounded-lg shadow-md p-4 mb-4 border border-gray-700">
+                    <h2 class="font-bold text-lg mb-3 text-gray-200">Document Browser</h2>
+                    <button id="refreshDocs"
+                        class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 w-full transition-colors mb-3">
+                        Refresh Documents
+                    </button>
+                    <div id="filesList" class="mt-2 max-h-80 overflow-y-auto">
+                        <p class="text-sm text-gray-400 italic">Click "Refresh Documents" to load files</p>
+                    </div>
+                </div>
+
                 <div class="bg-gray-800 rounded-lg shadow-md p-4 mb-4 border border-gray-700">
                     <h2 class="font-bold text-lg mb-3 text-gray-200">Sources Used</h2>
                     <ul id="sourcesList" class="text-sm text-gray-400">
                         <li class="italic">No sources used yet</li>
                     </ul>
                 </div>
-                
+
                 <div class="bg-gray-800 rounded-lg shadow-md p-4 border border-gray-700">
                     <h2 class="font-bold text-lg mb-3 text-gray-200">System Info</h2>
                     <div id="systemInfo" class="text-xs text-gray-400">
@@ -163,13 +227,15 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Chat Area -->
-            <div class="md:col-span-3">
-                <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col border border-gray-700" style="height: 80vh;">
+            <div class="md:col-span-2">
+                <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col border border-gray-700"
+                    style="height: 80vh;">
                     <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-4">
                         <div class="flex flex-col">
-                            <div class="chat-message assistant-message bg-gray-700 p-3 rounded-lg inline-block max-w-md">
+                            <div
+                                class="chat-message assistant-message bg-gray-700 p-3 rounded-lg inline-block max-w-md">
                                 <div class="markdown-content">
                                     <p>Hello! I'm your network troubleshooting assistant.</p>
                                     <ol>
@@ -180,19 +246,13 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="border-t border-gray-700 p-4">
                         <form id="chatForm" class="flex">
-                            <input 
-                                type="text" 
-                                id="messageInput" 
-                                placeholder="Type your message here..." 
-                                class="flex-1 bg-gray-700 border border-gray-600 rounded-l py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400"
-                            >
-                            <button 
-                                type="submit" 
-                                class="bg-blue-600 text-white py-2 px-6 rounded-r hover:bg-blue-700 flex items-center justify-center transition-colors"
-                            >
+                            <input type="text" id="messageInput" placeholder="Type your message here..."
+                                class="flex-1 bg-gray-700 border border-gray-600 rounded-l py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400">
+                            <button type="submit"
+                                class="bg-blue-600 text-white py-2 px-6 rounded-r hover:bg-blue-700 flex items-center justify-center transition-colors">
                                 <span id="sendText">Send</span>
                                 <span id="loadingIndicator" class="loader hidden"></span>
                             </button>
@@ -202,7 +262,7 @@
             </div>
         </div>
     </div>
-    
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const chatForm = document.getElementById('chatForm');
@@ -218,11 +278,13 @@
             const docsInfo = document.getElementById('docsInfo');
             const chromaInfo = document.getElementById('chromaInfo');
             const connStatus = document.getElementById('connStatus');
-            
+            const refreshDocsBtn = document.getElementById('refreshDocs');
+            const filesList = document.getElementById('filesList');
+
             // Set up Marked.js options for security and code highlighting
             marked.setOptions({
                 renderer: new marked.Renderer(),
-                highlight: function(code, language) {
+                highlight: function (code, language) {
                     const validLanguage = hljs.getLanguage(language) ? language : 'plaintext';
                     return hljs.highlight(validLanguage, code).value;
                 },
@@ -234,33 +296,33 @@
                 smartypants: false,
                 xhtml: false
             });
-            
+
             // Generate a random session ID
             const sessionId = Math.random().toString(36).substring(2, 15);
-            
+
             // Check application status
             async function checkAppStatus() {
                 try {
                     // Fetch status from server
                     const response = await fetch('/status');
                     const data = await response.json();
-                    
+
                     // Update model info
                     if (data.ollama_model) {
                         modelInfo.textContent = data.ollama_model;
                     }
-                    
+
                     // Update base model info
                     if (data.model_base) {
                         modelBase.textContent = data.model_base;
                     } else {
                         modelBase.textContent = "Unknown";
                     }
-                    
+
                     // Update connection status
                     if (data.ollama_host) {
-                        const modelDisplay = data.model_base !== "Unknown" ? 
-                            `${data.model_base}/${data.ollama_model}` : 
+                        const modelDisplay = data.model_base !== "Unknown" ?
+                            `${data.model_base}/${data.ollama_model}` :
                             data.ollama_model;
                         connStatus.textContent = `Connected to Ollama: ${modelDisplay}`;
                         connStatus.className = "text-xs mt-1 text-green-400";
@@ -268,65 +330,65 @@
                         connStatus.textContent = "Error connecting to Ollama";
                         connStatus.className = "text-xs mt-1 text-red-400";
                     }
-                    
+
                     // Update documents info - Make sure this is being updated properly
                     docsInfo.textContent = `${data.indexed_docs} indexed`;
                     docsInfo.className = "text-blue-400";
                     console.log(`Updated docs info: ${data.indexed_docs} indexed`); // Debug logging
-                    
+
                     // Update ChromaDB status
                     chromaInfo.textContent = data.chroma_available ? "Available" : "Not available";
                     chromaInfo.className = data.chroma_available ? "text-green-400" : "text-red-400";
-                    
+
                 } catch (error) {
                     console.error("Error checking application status:", error);
                     connStatus.textContent = "Error connecting to application";
                     connStatus.className = "text-xs mt-1 text-red-400";
                 }
             }
-            
+
             // Run startup checks
             checkAppStatus();
-            
+
             // Chat form submission
             chatForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                
+
                 const message = messageInput.value.trim();
                 if (!message) return;
-                
+
                 // Add user message to chat
                 appendMessage(message, 'user');
                 messageInput.value = '';
-                
+
                 // Show loading state
                 sendText.classList.add('hidden');
                 loadingIndicator.classList.remove('hidden');
-                
+
                 try {
                     const response = await fetch('/chat', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({ 
+                        body: JSON.stringify({
                             message,
                             session_id: sessionId
                         })
                     });
-                    
+
                     const data = await response.json();
-                    
+
                     // Add bot response to chat
                     appendMessage(data.response, 'assistant');
-                    
+
                     // Update sources list with deduplication
                     if (data.sources && data.sources.length > 0) {
                         sourcesList.innerHTML = '';
-                        
+
                         // Create a Set to deduplicate sources
                         const uniqueSources = new Set(data.sources);
-                        
+
                         // Convert back to array and sort for consistent display
                         Array.from(uniqueSources).sort().forEach(source => {
                             const li = document.createElement('li');
@@ -335,32 +397,32 @@
                             sourcesList.appendChild(li);
                         });
                     }
-                    
+
                 } catch (error) {
                     console.error('Error:', error);
                     appendMessage('Sorry, there was an error processing your request.', 'assistant', true);
                 }
-                
+
                 // Hide loading state
                 sendText.classList.remove('hidden');
                 loadingIndicator.classList.add('hidden');
-                
+
                 // Focus input field for next message
                 messageInput.focus();
             });
-            
+
             // Index documents
             indexDocsBtn.addEventListener('click', async () => {
                 indexStatus.textContent = 'Indexing documents...';
                 indexDocsBtn.disabled = true;
-                
+
                 try {
                     const response = await fetch('/index_docs', {
                         method: 'POST'
                     });
-                    
+
                     const data = await response.json();
-                    
+
                     if (data.error) {
                         indexStatus.textContent = data.error;
                         indexStatus.className = 'mt-2 text-sm text-red-400';
@@ -368,7 +430,7 @@
                         // Show success message about newly indexed documents
                         indexStatus.textContent = `Indexed ${data.indexed} documents successfully.`;
                         indexStatus.className = 'mt-2 text-sm text-green-400';
-                        
+
                         // Refresh status to get the updated total count
                         await checkAppStatus();
                     }
@@ -377,24 +439,24 @@
                     indexStatus.textContent = 'Error indexing documents.';
                     indexStatus.className = 'mt-2 text-sm text-red-400';
                 }
-                
+
                 indexDocsBtn.disabled = false;
             });
-            
+
             // Handle adding messages to the chat with Markdown rendering
             function appendMessage(content, sender, isError = false) {
                 const messageWrapper = document.createElement('div');
                 messageWrapper.className = 'flex flex-col mb-4';
-                
+
                 const messageDiv = document.createElement('div');
-                messageDiv.className = 'chat-message p-3 rounded-lg inline-block max-w-md ' + 
-                    (sender === 'user' 
-                        ? 'user-message bg-indigo-800' 
+                messageDiv.className = 'chat-message p-3 rounded-lg inline-block max-w-md ' +
+                    (sender === 'user'
+                        ? 'user-message bg-indigo-800'
                         : 'assistant-message ' + (isError ? 'bg-red-900' : 'bg-gray-700'));
-                
+
                 const contentDiv = document.createElement('div');
                 contentDiv.className = 'markdown-content';
-                
+
                 // Use marked.js to render Markdown
                 if (sender === 'assistant' || sender === 'system') {
                     // Apply Markdown rendering for assistant messages
@@ -403,20 +465,261 @@
                     // For user messages, just escape HTML and preserve line breaks
                     contentDiv.textContent = content;
                 }
-                
+
                 messageDiv.appendChild(contentDiv);
                 messageWrapper.appendChild(messageDiv);
                 chatMessages.appendChild(messageWrapper);
-                
+
                 // Apply syntax highlighting to code blocks
                 messageDiv.querySelectorAll('pre code').forEach((block) => {
                     hljs.highlightBlock(block);
                 });
-                
+
                 // Scroll to bottom
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
+
+            // Function to load and display the list of documentation files
+            async function loadDocumentsList() {
+                filesList.innerHTML = '<p class="text-sm text-gray-400">Loading documents...</p>';
+                
+                try {
+                    const response = await fetch('/list_docs');
+                    const data = await response.json();
+                    
+                    if (data.status === 'error') {
+                        filesList.innerHTML = `<p class="text-sm text-red-400">Error: ${data.error}</p>`;
+                        return;
+                    }
+                    
+                    if (data.files.length === 0) {
+                        filesList.innerHTML = '<p class="text-sm text-gray-400">No documentation files found.</p>';
+                        return;
+                    }
+                    
+                    // Clear and populate the files list
+                    filesList.innerHTML = '';
+                    const fileTable = document.createElement('table');
+                    fileTable.className = 'w-full text-sm';
+                    
+                    // Table header
+                    const tableHeader = document.createElement('thead');
+                    tableHeader.innerHTML = `
+                        <tr class="text-left text-xs text-gray-400 border-b border-gray-700">
+                            <th class="py-2">Name</th>
+                        </tr>
+                    `;
+                    fileTable.appendChild(tableHeader);
+                    
+                    // Table body
+                    const tableBody = document.createElement('tbody');
+                    data.files.forEach(file => {
+                        const row = document.createElement('tr');
+                        row.className = 'hover:bg-gray-700 cursor-pointer';
+                        row.innerHTML = `
+                            <td class="py-2 truncate" title="${file.name}">${file.name}</td>
+                        `;
+                        row.addEventListener('click', () => openDocument(file.path));
+                        tableBody.appendChild(row);
+                    });
+                    
+                    fileTable.appendChild(tableBody);
+                    filesList.appendChild(fileTable);
+                    
+                } catch (error) {
+                    console.error('Error loading documents:', error);
+                    filesList.innerHTML = '<p class="text-sm text-red-400">Error loading documents. Please try again.</p>';
+                }
+            }
+
+            // Function to open and display a document
+            function openDocument(filePath) {
+                // Create a URL to the document viewer with the path to the document
+                const viewerUrl = `/doc_viewer?path=${encodeURIComponent(filePath)}`;
+                window.open(viewerUrl, '_blank');
+            }
+
+            // Event listeners for document browser
+            refreshDocsBtn.addEventListener('click', loadDocumentsList);
+
+            // Load documents list when page loads
+            loadDocumentsList();
+        });
+
+        // Add these JavaScript functions inside the existing script tag
+        // Document file browser functionality
+        const refreshDocsBtn = document.getElementById('refreshDocs');
+        const filesList = document.getElementById('filesList');
+        const docViewerModal = document.getElementById('docViewerModal');
+        const docTitle = document.getElementById('docTitle');
+        const docContent = document.getElementById('docContent');
+        const closeModal = document.getElementById('closeModal');
+        const openInNewTab = document.getElementById('openInNewTab');
+
+        let currentDocPath = ''; // Keep track of the currently opened document
+
+        // Function to load and display the list of documentation files
+        async function loadDocumentsList() {
+            filesList.innerHTML = '<p class="text-sm text-gray-400">Loading documents...</p>';
+            
+            try {
+                const response = await fetch('/list_docs');
+                const data = await response.json();
+                
+                if (data.status === 'error') {
+                    filesList.innerHTML = `<p class="text-sm text-red-400">Error: ${data.error}</p>`;
+                    return;
+                }
+                
+                if (data.files.length === 0) {
+                    filesList.innerHTML = '<p class="text-sm text-gray-400">No documentation files found.</p>';
+                    return;
+                }
+                
+                // Clear and populate the files list
+                filesList.innerHTML = '';
+                const fileTable = document.createElement('table');
+                fileTable.className = 'w-full text-sm';
+                
+                // Table header
+                const tableHeader = document.createElement('thead');
+                tableHeader.innerHTML = `
+                    <tr class="text-left text-xs text-gray-400 border-b border-gray-700">
+                        <th class="py-2">Name</th>
+                    </tr>
+                `;
+                fileTable.appendChild(tableHeader);
+                
+                // Table body
+                const tableBody = document.createElement('tbody');
+                data.files.forEach(file => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-700 cursor-pointer';
+                    row.innerHTML = `
+                        <td class="py-2">${file.name}</td>
+                    `;
+                    row.addEventListener('click', () => openDocument(file.path));
+                    tableBody.appendChild(row);
+                });
+                
+                fileTable.appendChild(tableBody);
+                filesList.appendChild(fileTable);
+                
+            } catch (error) {
+                console.error('Error loading documents:', error);
+                filesList.innerHTML = '<p class="text-sm text-red-400">Error loading documents. Please try again.</p>';
+            }
+        }
+
+        // Function to open and display a document
+        async function openDocument(filePath) {
+            try {
+                const response = await fetch(`/get_doc/${filePath}`);
+                const data = await response.json();
+                
+                if (data.status === 'error') {
+                    alert(`Error: ${data.error}`);
+                    return;
+                }
+                
+                // Store current document path
+                currentDocPath = filePath;
+                
+                // Update the modal title
+                docTitle.textContent = data.name;
+                
+                // Update the content of the document viewer
+                if (data.type === 'yaml') {
+                    // For YAML files, display as formatted code
+                    docContent.innerHTML = `<pre><code class="language-json">${escapeHtml(data.content)}</code></pre>`;
+                } else {
+                    // For Markdown and text files, use Marked.js
+                    docContent.innerHTML = marked.parse(data.content);
+                }
+                
+                // Apply syntax highlighting
+                docContent.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightBlock(block);
+                });
+                
+                // Update the "Open in New Tab" button's URL
+                openInNewTab.onclick = () => {
+                    // Create a URL to the document viewer with the path to the document
+                    const viewerUrl = `/doc_viewer?path=${encodeURIComponent(filePath)}`;
+                    window.open(viewerUrl, '_blank');
+                };
+                
+                // Show the modal
+                docViewerModal.classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error opening document:', error);
+                alert('Error opening document. Please try again.');
+            }
+        }
+
+        // Helper function to escape HTML content
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Event listeners for document browser
+        refreshDocsBtn.addEventListener('click', loadDocumentsList);
+
+        // Close modal when the close button is clicked
+        closeModal.addEventListener('click', () => {
+            docViewerModal.classList.add('hidden');
+        });
+
+        // Close modal when clicking outside the content area
+        docViewerModal.addEventListener('click', (e) => {
+            if (e.target === docViewerModal) {
+                docViewerModal.classList.add('hidden');
+            }
+        });
+
+        // Also close on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !docViewerModal.classList.contains('hidden')) {
+                docViewerModal.classList.add('hidden');
+            }
+        });
+
+        // Load documents list when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Existing DOMContentLoaded event handler code...
+            
+            // Automatically load the document list
+            loadDocumentsList();
         });
     </script>
+
+    <!-- Add this modal for document viewing at the end of the body but before closing body tag -->
+    <div id="docViewerModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div
+            class="bg-gray-800 rounded-lg shadow-xl border border-gray-700 w-full max-w-5xl max-h-screen flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                <h3 id="docTitle" class="text-xl font-semibold text-white">Document Viewer</h3>
+                <div class="flex space-x-2">
+                    <button id="openInNewTab"
+                        class="bg-blue-600 text-white py-1 px-3 rounded hover:bg-blue-700 text-sm">
+                        Open in New Tab
+                    </button>
+                    <button id="closeModal" class="bg-gray-600 text-white py-1 px-3 rounded hover:bg-gray-700 text-sm">
+                        Close
+                    </button>
+                </div>
+            </div>
+            <div id="docContent" class="p-6 overflow-y-auto flex-grow markdown-content bg-gray-900">
+                <!-- Document content will be displayed here -->
+            </div>
+        </div>
+    </div>
 </body>
+
 </html>
