@@ -5,6 +5,7 @@ import re
 import hashlib
 import requests
 import logging
+import warnings
 from collections import defaultdict
 from flask import Flask, request, render_template, jsonify
 from dotenv import load_dotenv
@@ -12,6 +13,7 @@ from dotenv import load_dotenv
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logging.getLogger("chromadb.segment.impl.vector.local_persistent_hnsw").setLevel(logging.ERROR)
 
 app = Flask(__name__)
 
@@ -140,10 +142,10 @@ def get_document_status(docs_dir, collection, chroma_available):
                         except ValueError:
                             pass
 
-            logger.info(f"Found {len(indexed_sources)} unique sources in ChromaDB")
-            # Debug: print first 5 sources to help diagnose issues
-            for i, source in enumerate(list(indexed_sources)[:5]):
-                logger.info(f"Sample source {i+1}: {source}")
+            # logger.info(f"Found {len(indexed_sources)} unique sources in ChromaDB")
+            # # Debug: print first 5 sources to help diagnose issues
+            # for i, source in enumerate(list(indexed_sources)[:5]):
+            #     logger.info(f"Sample source {i+1}: {source}")
         except Exception as e:
             logger.error(f"Error fetching sources from ChromaDB: {e}")
 
@@ -312,7 +314,13 @@ def query_vector_db(query, n_results=SEARCH_RESULTS):
     if not CHROMA_AVAILABLE or collection is None:
         return "Vector search not available. Using default knowledge."
     try:
-        results = collection.query(query_texts=[query], n_results=n_results)
+        # Set include parameter to fetch all relevant metadata but avoid adding new vectors
+        results = collection.query(
+            query_texts=[query],
+            n_results=n_results,
+            include=["documents", "metadatas", "distances"],
+        )
+
         context = ""
         if (
             results
@@ -511,7 +519,8 @@ Respond in a helpful and informative way. All troubleshooting should be done thr
         sources = []
         if CHROMA_AVAILABLE and collection is not None:
             try:
-                results = collection.query(query_texts=[message])
+                # Specify include parameter to prevent adding new vectors
+                results = collection.query(query_texts=[message], include=["metadatas"])
                 if results.get("metadatas") and results["metadatas"][0]:
                     sources = [
                         os.path.basename(m["source"]) for m in results["metadatas"][0]
