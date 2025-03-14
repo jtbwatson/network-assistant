@@ -13,9 +13,9 @@ from dotenv import load_dotenv
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-logging.getLogger("chromadb.segment.impl.vector.local_persistent_hnsw").setLevel(
-    logging.ERROR
-)
+# logging.getLogger("chromadb.segment.impl.vector.local_persistent_hnsw").setLevel(
+#     logging.ERROR
+# )
 
 app = Flask(__name__)
 
@@ -55,7 +55,7 @@ def init_db():
                 SentenceTransformerEmbeddingFunction,
             )
 
-            emb_fn = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+            emb_fn = SentenceTransformerEmbeddingFunction(model_name="all-mpnet-base-v2")
         except Exception as e:
             logger.error(f"Error loading sentence transformer: {e}")
             emb_fn = None
