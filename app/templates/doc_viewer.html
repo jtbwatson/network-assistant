@@ -10,6 +10,8 @@
     <!-- Add highlight.js for code syntax highlighting -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <!-- Add Monaco Editor (VS Code editor) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs/loader.min.js"></script>
     <style>
         body {
             display: flex;
@@ -96,6 +98,44 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #6B7280;
         }
+        
+        /* Editor styling */
+        #editor-container {
+            width: 100%;
+            height: 70vh;
+            border: 1px solid #4B5563;
+            border-radius: 0.375rem;
+            overflow: hidden;
+        }
+        
+        /* Toggle button styling */
+        .toggle-btn {
+            background-color: #4B5563;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+        .toggle-btn.active {
+            background-color: #6366F1;
+        }
+        
+        /* Status message styling */
+        .status-message {
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-top: 8px;
+        }
+        .status-success {
+            background-color: rgba(5, 150, 105, 0.2);
+            color: #10B981;
+        }
+        .status-error {
+            background-color: rgba(220, 38, 38, 0.2);
+            color: #EF4444;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200">
@@ -107,8 +147,32 @@
     </header>
     
     <main class="container mx-auto max-w-5xl p-6 content">
-        <div id="docContent" class="markdown-content bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-            <p class="text-center">Loading document...</p>
+        <!-- View controls -->
+        <div class="flex mb-4 items-center justify-between">
+            <div>
+                <button id="viewBtn" class="toggle-btn active">View</button>
+                <button id="editBtn" class="toggle-btn">Edit</button>
+            </div>
+            <div>
+                <button id="saveBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded hidden">
+                    Save Changes
+                </button>
+            </div>
+        </div>
+        
+        <!-- Status message area -->
+        <div id="statusMessage" class="hidden status-message mb-4"></div>
+        
+        <!-- View mode container -->
+        <div id="viewContainer">
+            <div id="docContent" class="markdown-content bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+                <p class="text-center">Loading document...</p>
+            </div>
+        </div>
+        
+        <!-- Edit mode container (initially hidden) -->
+        <div id="editContainer" class="hidden">
+            <div id="editor-container"></div>
         </div>
     </main>
     
@@ -118,10 +182,22 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const viewContainer = document.getElementById('viewContainer');
+            const editContainer = document.getElementById('editContainer');
             const docContent = document.getElementById('docContent');
             const docTitle = document.getElementById('docTitle');
+            const viewBtn = document.getElementById('viewBtn');
+            const editBtn = document.getElementById('editBtn');
+            const saveBtn = document.getElementById('saveBtn');
+            const statusMessage = document.getElementById('statusMessage');
+            
             const urlParams = new URLSearchParams(window.location.search);
             const docPath = urlParams.get('path');
+            
+            let editor; // Will hold the Monaco editor instance
+            let currentDocContent = "";
+            let currentDocType = "";
+            let editorInitialized = false;
             
             // Set up Marked.js options for security and code highlighting
             marked.setOptions({
@@ -139,6 +215,217 @@
                 xhtml: false
             });
             
+            // Helper function to escape HTML content
+            function escapeHtml(unsafe) {
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+            
+            // Function to initialize the Monaco editor
+            function initEditor(content, language) {
+                const editorLanguage = getMonacoLanguage(language, docPath);
+                
+                if (editorInitialized) {
+                    editor.setValue(content);
+                    monaco.editor.setModelLanguage(editor.getModel(), editorLanguage);
+                    return;
+                }
+                
+                // Load Monaco editor
+                require.config({ 
+                    paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs' }
+                });
+                
+                require(['vs/editor/editor.main'], function() {
+                    // Register YAML language if we're working with YAML files
+                    if (editorLanguage === 'yaml' && !monaco.languages.getLanguages().some(lang => lang.id === 'yaml')) {
+                        // This adds better YAML support
+                        monaco.languages.register({ id: 'yaml' });
+                        monaco.languages.setMonarchTokensProvider('yaml', {
+                            tokenizer: {
+                                root: [
+                                    [/^---$/, 'meta.directive'],
+                                    [/^[\s]*#.*$/, 'comment'],
+                                    [/^[\s]*[\-\?][\s]*.+:/, 'key'],
+                                    [/^[\s]*[\w]+\s*:/, 'key'],
+                                    [/:\s*[\w]+/, 'string'],
+                                    [/:\s*".*"/, 'string'],
+                                    [/:\s*'.*'/, 'string'],
+                                    [/:\s*[\d\.]+/, 'number'],
+                                    [/:\s*true|false/, 'boolean'],
+                                    [/:\s*null/, 'keyword'],
+                                ]
+                            }
+                        });
+                    }
+                    
+                    // Create editor with content
+                    editor = monaco.editor.create(document.getElementById('editor-container'), {
+                        value: content,
+                        language: editorLanguage,
+                        theme: 'vs-dark',
+                        automaticLayout: true,
+                        minimap: { enabled: true },
+                        scrollBeyondLastLine: false,
+                        fontSize: 14,
+                        tabSize: 2,
+                        wordWrap: 'on',
+                        wrappingIndent: 'same',
+                        lineNumbers: 'on',
+                        glyphMargin: true,
+                        folding: true,
+                        renderLineHighlight: 'all',
+                        suggestOnTriggerCharacters: true
+                    });
+                    
+                    editorInitialized = true;
+                    
+                    // Handle window resize
+                    window.addEventListener('resize', function() {
+                        if (editor) {
+                            editor.layout();
+                        }
+                    });
+                    
+                    console.log(`Editor initialized with language: ${editorLanguage}`);
+                });
+            }
+            
+            // Map document type and file extension to Monaco editor language
+            function getMonacoLanguage(docType, filePath) {
+                // Get file extension from path
+                const fileExt = filePath ? filePath.split('.').pop().toLowerCase() : '';
+                
+                // First check the document type (from server)
+                switch(docType) {
+                    case 'yaml':
+                        return 'yaml';
+                    case 'md':
+                        return 'markdown';
+                }
+                
+                // Then check file extension for more specific mapping
+                switch(fileExt) {
+                    case 'md':
+                        return 'markdown';
+                    case 'markdown':
+                        return 'markdown';
+                    case 'json':
+                        return 'json';
+                    case 'yaml':
+                    case 'yml':
+                        return 'yaml';
+                    case 'py':
+                        return 'python';
+                    case 'js':
+                        return 'javascript';
+                    case 'html':
+                        return 'html';
+                    case 'css':
+                        return 'css';
+                    case 'sh':
+                        return 'shell';
+                    case 'bash':
+                        return 'shell';
+                    case 'txt':
+                        return 'plaintext';
+                    default:
+                        return 'plaintext';
+                }
+            }
+            
+            // Toggle between view and edit modes
+            viewBtn.addEventListener('click', function() {
+                viewContainer.classList.remove('hidden');
+                editContainer.classList.add('hidden');
+                saveBtn.classList.add('hidden');
+                viewBtn.classList.add('active');
+                editBtn.classList.remove('active');
+            });
+            
+            editBtn.addEventListener('click', function() {
+                viewContainer.classList.add('hidden');
+                editContainer.classList.remove('hidden');
+                saveBtn.classList.remove('hidden');
+                viewBtn.classList.remove('active');
+                editBtn.classList.add('active');
+                
+                // Initialize editor if we have content
+                if (currentDocContent) {
+                    initEditor(currentDocContent, currentDocType);
+                }
+            });
+            
+            // Save button handler
+            saveBtn.addEventListener('click', function() {
+                if (!editor) return;
+                
+                const updatedContent = editor.getValue();
+                
+                // Show saving status
+                showStatus("Saving changes...", "info");
+                
+                // Send updated content to server
+                fetch(`/save_doc/${encodeURIComponent(docPath)}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        content: updatedContent
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showStatus("Document saved successfully!", "success");
+                        currentDocContent = updatedContent;
+                        updatePreview(updatedContent, currentDocType);
+                    } else {
+                        showStatus(`Error: ${data.error}`, "error");
+                    }
+                })
+                .catch(error => {
+                    showStatus(`Error saving document: ${error}`, "error");
+                });
+            });
+            
+            // Show status message
+            function showStatus(message, type) {
+                statusMessage.textContent = message;
+                statusMessage.classList.remove('hidden', 'status-success', 'status-error');
+                
+                if (type === 'success') {
+                    statusMessage.classList.add('status-success');
+                } else if (type === 'error') {
+                    statusMessage.classList.add('status-error');
+                }
+                
+                // Hide after 5 seconds
+                setTimeout(() => {
+                    statusMessage.classList.add('hidden');
+                }, 5000);
+            }
+            
+            // Update the preview with new content
+            function updatePreview(content, type) {
+                if (type === 'yaml') {
+                    docContent.innerHTML = `<pre><code class="language-json">${escapeHtml(content)}</code></pre>`;
+                } else {
+                    docContent.innerHTML = marked.parse(content);
+                }
+                
+                // Apply syntax highlighting
+                docContent.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightBlock(block);
+                });
+            }
+            
+            // Function to load document
             async function loadDocument() {
                 if (!docPath) {
                     docContent.innerHTML = '<p class="text-center text-red-400">No document specified.</p>';
@@ -157,38 +444,26 @@
                         return;
                     }
                     
+                    // Store content for editor
+                    currentDocContent = data.content;
+                    currentDocType = data.type;
+                    
+                    // Log information about the file for debugging
+                    console.log(`Loaded document: ${docPath}`);
+                    console.log(`Document type from server: ${data.type}`);
+                    console.log(`Document extension: ${docPath.split('.').pop().toLowerCase()}`);
+                    
                     // Update the document title
                     document.title = `Network Docs - ${data.name}`;
                     docTitle.textContent = data.name;
                     
                     // Update the content of the document viewer
-                    if (data.type === 'yaml') {
-                        // For YAML files, display as formatted code
-                        docContent.innerHTML = `<pre><code class="language-json">${escapeHtml(data.content)}</code></pre>`;
-                    } else {
-                        // For Markdown and text files, use Marked.js
-                        docContent.innerHTML = marked.parse(data.content);
-                    }
-                    
-                    // Apply syntax highlighting
-                    docContent.querySelectorAll('pre code').forEach((block) => {
-                        hljs.highlightBlock(block);
-                    });
+                    updatePreview(data.content, data.type);
                     
                 } catch (error) {
                     console.error('Error loading document:', error);
                     docContent.innerHTML = '<p class="text-center text-red-400">Error loading document. Please try again.</p>';
                 }
-            }
-            
-            // Helper function to escape HTML content
-            function escapeHtml(unsafe) {
-                return unsafe
-                    .replace(/&/g, "&amp;")
-                    .replace(/</g, "&lt;")
-                    .replace(/>/g, "&gt;")
-                    .replace(/"/g, "&quot;")
-                    .replace(/'/g, "&#039;");
             }
             
             // Load the document

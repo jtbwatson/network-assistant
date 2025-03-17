@@ -333,8 +333,16 @@ def get_document_content(file_path):
     elif file_ext in (".yaml", ".yml"):
         with open(abs_path, "r", encoding="utf-8") as f:
             try:
-                yaml_content = yaml.safe_load(f)
-                content = json.dumps(yaml_content, indent=2)
+                # For YAML files, we have two options:
+                # 1. Convert to JSON for editing and convert back when saving (easier editing)
+                # 2. Keep as raw YAML (preserves comments and formatting)
+                
+                # Option 1: Convert to JSON (uncomment if preferred)
+                # yaml_content = yaml.safe_load(f)
+                # content = json.dumps(yaml_content, indent=2)
+                
+                # Option 2: Keep as raw YAML (better for syntax highlighting)
+                content = f.read()
                 content_type = "yaml"
             except Exception as e:
                 logger.error(f"Error parsing YAML: {e}")
@@ -359,3 +367,78 @@ def get_document_content(file_path):
         "type": content_type,
         "path": file_path,
     }
+
+
+def save_document_content(file_path, content):
+    """Save updated content to a document file"""
+    # Handle URL-encoded paths
+    file_path = file_path.replace("%20", " ")
+
+    # Ensure file path is within DOCS_DIR by checking for path traversal
+    abs_path = os.path.abspath(os.path.join(config.DOCS_DIR, file_path))
+    logger.info(f"Saving to path: {abs_path}")
+
+    if not abs_path.startswith(os.path.abspath(config.DOCS_DIR)):
+        logger.warning(f"Path traversal attempt detected: {file_path}")
+        return {
+            "status": "error",
+            "error": "Invalid file path - attempted path traversal"
+        }
+
+    # Verify the file exists (we're only allowing updates, not creating new files)
+    if not os.path.exists(abs_path):
+        logger.warning(f"File not found: {abs_path}")
+        return {
+            "status": "error",
+            "error": f"File not found: {file_path}"
+        }
+
+    # Get file extension
+    file_ext = os.path.splitext(abs_path)[1].lower()
+
+    try:
+        # Handle different file types
+        if file_ext in (".txt", ".md"):
+            with open(abs_path, "w", encoding="utf-8") as f:
+                f.write(content)
+        elif file_ext in (".yaml", ".yml"):
+            # For YAML files, just write the content directly
+            # This preserves the original format, comments, etc.
+            try:
+                with open(abs_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                # Optionally validate the YAML after saving
+                try:
+                    with open(abs_path, "r", encoding="utf-8") as f:
+                        yaml.safe_load(f)  # Just for validation
+                except Exception as e:
+                    logger.warning(f"Saved YAML may have syntax issues: {e}")
+            except Exception as e:
+                logger.error(f"Error saving YAML file: {e}")
+                return {
+                    "status": "error",
+                    "error": f"Error saving YAML file: {str(e)}"
+                }
+        else:
+            logger.warning(f"Unsupported file type for saving: {file_ext}")
+            return {
+                "status": "error",
+                "error": f"Unsupported file type for saving: {file_ext}"
+            }
+
+        logger.info(f"Successfully saved content to: {file_path}")
+        
+        # If the file is indexed, mark it as needing reindexing
+        # This will add it to the "modified" list in document_status
+        # We don't reindex here to keep the save operation fast
+        
+        return {
+            "status": "success",
+            "message": "Document saved successfully"
+        }
+    except Exception as e:
+        logger.error(f"Error saving document {file_path}: {e}", exc_info=True)
+        return {
+            "status": "error",
+            "error": f"Error saving document: {str(e)}"
+        }

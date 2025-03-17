@@ -1,6 +1,6 @@
 import os
 import logging
-from flask import Flask, request, render_template, jsonify # type: ignore
+from flask import Flask, request, render_template, jsonify
 from dotenv import load_dotenv
 
 # Import modules
@@ -121,6 +121,27 @@ def get_doc_endpoint(file_path):
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error getting document {file_path}: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+        
+        
+@app.route("/save_doc/<path:file_path>", methods=["POST"])
+def save_doc_endpoint(file_path):
+    """Save updated contents to a document"""
+    from modules.document_manager import save_document_content
+    try:
+        data = request.get_json(silent=True, force=True)
+        if not data or "content" not in data:
+            return jsonify({"status": "error", "error": "No content provided"}), 400
+            
+        content = data["content"]
+        result = save_document_content(file_path, content)
+        
+        if result.get("status") == "error":
+            return jsonify(result), 400
+            
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error saving document {file_path}: {e}", exc_info=True)
         return jsonify({"status": "error", "error": str(e)}), 500
 
 
