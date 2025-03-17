@@ -126,10 +126,16 @@ def get_document_status(docs_dir, collection, chroma_available):
     }
 
 
-def index_documents(collection, docs_dir=config.DOCS_DIR, specific_files=None):
+def index_documents(collection, docs_dir=config.DOCS_DIR, specific_files=None, force_reindex=False):
     """
     Index documentation files into the vector database.
     Returns status and counts for indexing, updating, and skipped files.
+    
+    Parameters:
+        collection: ChromaDB collection
+        docs_dir: Directory containing documentation files
+        specific_files: List of specific files to index
+        force_reindex: Whether to force reindexing of all files
     """
     if not config.CHROMA_AVAILABLE or collection is None:
         return {
@@ -143,26 +149,44 @@ def index_documents(collection, docs_dir=config.DOCS_DIR, specific_files=None):
     files_indexed, files_updated, files_skipped = 0, 0, 0
     os.makedirs(docs_dir, exist_ok=True)
     doc_status = get_document_status(docs_dir, collection, config.CHROMA_AVAILABLE)
+    
+    # Determine which files to process based on parameters
     files_to_process = []
-    if specific_files:
+    
+    if force_reindex:
+        # Include all indexed, unindexed, and modified files when force_reindex is True
+        logger.info("Force reindexing all documents")
+        for rel_path in doc_status["indexed"] + doc_status["unindexed"] + doc_status["modified"]:
+            files_to_process.append(os.path.join(docs_dir, rel_path))
+    elif specific_files:
+        # Index only specific files
         for rel_path in specific_files:
             abs_path = os.path.join(docs_dir, rel_path)
             if os.path.exists(abs_path):
                 files_to_process.append(abs_path)
     else:
+        # Index only unindexed and modified files by default
         for rel_path in doc_status["unindexed"] + doc_status["modified"]:
             files_to_process.append(os.path.join(docs_dir, rel_path))
+
+    # Log the number of files to process
+    logger.info(f"Processing {len(files_to_process)} files")
 
     for file_path in files_to_process:
         try:
             file_path = os.path.normpath(file_path)
             file_id = hashlib.md5(file_path.encode()).hexdigest()
             rel_path = os.path.relpath(file_path, docs_dir)
-            is_update = rel_path in doc_status["modified"]
+            
+            # Check if this is a new document or an update
+            is_update = rel_path in doc_status["modified"] or (
+                force_reindex and rel_path in doc_status["indexed"]
+            )
             
             # Remove existing document chunks if updating
             if is_update:
                 try:
+                    logger.info(f"Removing existing chunks for {rel_path}")
                     results = collection.get(where={"source": file_path})
                     if results and results["ids"]:
                         collection.delete(ids=results["ids"])
@@ -213,12 +237,17 @@ def index_documents(collection, docs_dir=config.DOCS_DIR, specific_files=None):
             # Update counters based on whether this was an update or new file
             if is_update:
                 files_updated += 1
+                logger.info(f"Updated file: {rel_path}")
             else:
                 files_indexed += 1
+                logger.info(f"Indexed file: {rel_path}")
                 
         except Exception as e:
             logger.error(f"Error processing file {file_path}: {e}")
             files_skipped += 1
+    
+    # Log the results
+    logger.info(f"Indexing completed: {files_indexed} indexed, {files_updated} updated, {files_skipped} skipped")
             
     return {
         "status": "success",
@@ -226,7 +255,6 @@ def index_documents(collection, docs_dir=config.DOCS_DIR, specific_files=None):
         "updated": files_updated,
         "skipped": files_skipped,
     }
-
 
 def query_vector_db(collection, query, n_results=config.SEARCH_RESULTS):
     """Search the vector database for relevant context"""

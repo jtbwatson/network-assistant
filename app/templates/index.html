@@ -179,14 +179,28 @@
             <div class="md:col-span-1">
                 <div class="bg-gray-800 rounded-lg shadow-md p-4 mb-4 border border-gray-700">
                     <h2 class="font-bold text-lg mb-3 text-gray-200">Document Management</h2>
-                    <button id="indexDocs"
-                        class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 w-full transition-colors">
-                        Index Documents
-                    </button>
-                    <div id="indexStatus" class="mt-2 text-sm text-gray-400"></div>
+                    <div class="mb-3">
+                        <button id="indexDocs"
+                            class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 w-full transition-colors mb-2">
+                            Index Documents
+                        </button>
+                        <div id="indexStatus" class="mt-1 text-sm text-gray-400"></div>
+                    </div>
+                    <div class="flex flex-col space-y-2 pt-2 border-t border-gray-700">
+                        <h3 class="font-medium text-sm text-gray-300 mb-1">Database Maintenance</h3>
+                        <button id="reindexAll"
+                            class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 w-full transition-colors text-sm">
+                            Force Reindex All
+                        </button>
+                        <button id="resetDb"
+                            class="bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700 w-full transition-colors text-sm"
+                            data-confirm="This will delete and rebuild the entire vector database. Continue?">
+                            Reset Database
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Add this new section below the Document Management section in index.html -->
+                <!-- Document Browser section -->
                 <div class="bg-gray-800 rounded-lg shadow-md p-4 mb-4 border border-gray-700">
                     <h2 class="font-bold text-lg mb-3 text-gray-200">Document Browser</h2>
                     <button id="refreshDocs"
@@ -234,8 +248,7 @@
                     style="height: 80vh;">
                     <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-4">
                         <div class="flex flex-col">
-                            <div
-                                class="chat-message assistant-message bg-gray-700 p-3 rounded-lg inline-block max-w-md">
+                            <div class="chat-message assistant-message bg-gray-700 p-3 rounded-lg inline-block max-w-md">
                                 <div class="markdown-content">
                                     <p>Hello! I'm your network troubleshooting assistant.</p>
                                     <ol>
@@ -280,6 +293,8 @@
             const connStatus = document.getElementById('connStatus');
             const refreshDocsBtn = document.getElementById('refreshDocs');
             const filesList = document.getElementById('filesList');
+            const reindexAllBtn = document.getElementById('reindexAll');
+            const resetDbBtn = document.getElementById('resetDb');
 
             // Set up Marked.js options for security and code highlighting
             marked.setOptions({
@@ -482,26 +497,26 @@
             // Function to load and display the list of documentation files
             async function loadDocumentsList() {
                 filesList.innerHTML = '<p class="text-sm text-gray-400">Loading documents...</p>';
-                
+
                 try {
                     const response = await fetch('/list_docs');
                     const data = await response.json();
-                    
+
                     if (data.status === 'error') {
                         filesList.innerHTML = `<p class="text-sm text-red-400">Error: ${data.error}</p>`;
                         return;
                     }
-                    
+
                     if (data.files.length === 0) {
                         filesList.innerHTML = '<p class="text-sm text-gray-400">No documentation files found.</p>';
                         return;
                     }
-                    
+
                     // Clear and populate the files list
                     filesList.innerHTML = '';
                     const fileTable = document.createElement('table');
                     fileTable.className = 'w-full text-sm';
-                    
+
                     // Table header
                     const tableHeader = document.createElement('thead');
                     tableHeader.innerHTML = `
@@ -510,7 +525,7 @@
                         </tr>
                     `;
                     fileTable.appendChild(tableHeader);
-                    
+
                     // Table body
                     const tableBody = document.createElement('tbody');
                     data.files.forEach(file => {
@@ -522,10 +537,10 @@
                         row.addEventListener('click', () => openDocument(file.path));
                         tableBody.appendChild(row);
                     });
-                    
+
                     fileTable.appendChild(tableBody);
                     filesList.appendChild(fileTable);
-                    
+
                 } catch (error) {
                     console.error('Error loading documents:', error);
                     filesList.innerHTML = '<p class="text-sm text-red-400">Error loading documents. Please try again.</p>';
@@ -541,160 +556,94 @@
 
             // Event listeners for document browser
             refreshDocsBtn.addEventListener('click', loadDocumentsList);
+            
+            // Force reindex all documents
+            reindexAllBtn.addEventListener('click', async () => {
+                if (!confirm('This will reindex all documents. Continue?')) {
+                    return;
+                }
+                
+                indexStatus.textContent = 'Reindexing all documents...';
+                reindexAllBtn.disabled = true;
+                indexDocsBtn.disabled = true;
+                resetDbBtn.disabled = true;
+
+                try {
+                    const response = await fetch('/reindex_all', {
+                        method: 'POST'
+                    });
+
+                    const data = await response.json();
+
+                    if (data.error) {
+                        indexStatus.textContent = data.error;
+                        indexStatus.className = 'mt-1 text-sm text-red-400';
+                    } else {
+                        indexStatus.textContent = `Reindexed ${data.indexed} documents, updated ${data.updated} documents.`;
+                        indexStatus.className = 'mt-1 text-sm text-green-400';
+
+                        // Refresh status to get the updated total count
+                        await checkAppStatus();
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    indexStatus.textContent = 'Error reindexing documents.';
+                    indexStatus.className = 'mt-1 text-sm text-red-400';
+                }
+
+                reindexAllBtn.disabled = false;
+                indexDocsBtn.disabled = false;
+                resetDbBtn.disabled = false;
+            });
+
+            // Reset the database
+            resetDbBtn.addEventListener('click', async () => {
+                const confirmMessage = resetDbBtn.dataset.confirm || 'Are you sure?';
+                if (!confirm(confirmMessage)) {
+                    return;
+                }
+                
+                indexStatus.textContent = 'Resetting database...';
+                resetDbBtn.disabled = true;
+                indexDocsBtn.disabled = true;
+                reindexAllBtn.disabled = true;
+
+                try {
+                    const response = await fetch('/reset_db', {
+                        method: 'POST'
+                    });
+
+                    const data = await response.json();
+
+                    if (data.status === 'error') {
+                        indexStatus.textContent = data.error;
+                        indexStatus.className = 'mt-1 text-sm text-red-400';
+                    } else {
+                        indexStatus.textContent = data.message;
+                        indexStatus.className = 'mt-1 text-sm text-green-400';
+
+                        // Refresh status to get the updated total count
+                        await checkAppStatus();
+                        
+                        // Prompt user to reindex
+                        setTimeout(() => {
+                            if (confirm('Database reset successful. Would you like to reindex all documents now?')) {
+                                reindexAllBtn.click();
+                            }
+                        }, 500);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    indexStatus.textContent = 'Error resetting database.';
+                    indexStatus.className = 'mt-1 text-sm text-red-400';
+                }
+
+                resetDbBtn.disabled = false;
+                indexDocsBtn.disabled = false;
+                reindexAllBtn.disabled = false;
+            });
 
             // Load documents list when page loads
-            loadDocumentsList();
-        });
-
-        // Add these JavaScript functions inside the existing script tag
-        // Document file browser functionality
-        const refreshDocsBtn = document.getElementById('refreshDocs');
-        const filesList = document.getElementById('filesList');
-        const docViewerModal = document.getElementById('docViewerModal');
-        const docTitle = document.getElementById('docTitle');
-        const docContent = document.getElementById('docContent');
-        const closeModal = document.getElementById('closeModal');
-        const openInNewTab = document.getElementById('openInNewTab');
-
-        let currentDocPath = ''; // Keep track of the currently opened document
-
-        // Function to load and display the list of documentation files
-        async function loadDocumentsList() {
-            filesList.innerHTML = '<p class="text-sm text-gray-400">Loading documents...</p>';
-            
-            try {
-                const response = await fetch('/list_docs');
-                const data = await response.json();
-                
-                if (data.status === 'error') {
-                    filesList.innerHTML = `<p class="text-sm text-red-400">Error: ${data.error}</p>`;
-                    return;
-                }
-                
-                if (data.files.length === 0) {
-                    filesList.innerHTML = '<p class="text-sm text-gray-400">No documentation files found.</p>';
-                    return;
-                }
-                
-                // Clear and populate the files list
-                filesList.innerHTML = '';
-                const fileTable = document.createElement('table');
-                fileTable.className = 'w-full text-sm';
-                
-                // Table header
-                const tableHeader = document.createElement('thead');
-                tableHeader.innerHTML = `
-                    <tr class="text-left text-xs text-gray-400 border-b border-gray-700">
-                        <th class="py-2">Name</th>
-                    </tr>
-                `;
-                fileTable.appendChild(tableHeader);
-                
-                // Table body
-                const tableBody = document.createElement('tbody');
-                data.files.forEach(file => {
-                    const row = document.createElement('tr');
-                    row.className = 'hover:bg-gray-700 cursor-pointer';
-                    row.innerHTML = `
-                        <td class="py-2">${file.name}</td>
-                    `;
-                    row.addEventListener('click', () => openDocument(file.path));
-                    tableBody.appendChild(row);
-                });
-                
-                fileTable.appendChild(tableBody);
-                filesList.appendChild(fileTable);
-                
-            } catch (error) {
-                console.error('Error loading documents:', error);
-                filesList.innerHTML = '<p class="text-sm text-red-400">Error loading documents. Please try again.</p>';
-            }
-        }
-
-        // Function to open and display a document
-        async function openDocument(filePath) {
-            try {
-                const response = await fetch(`/get_doc/${filePath}`);
-                const data = await response.json();
-                
-                if (data.status === 'error') {
-                    alert(`Error: ${data.error}`);
-                    return;
-                }
-                
-                // Store current document path
-                currentDocPath = filePath;
-                
-                // Update the modal title
-                docTitle.textContent = data.name;
-                
-                // Update the content of the document viewer
-                if (data.type === 'yaml') {
-                    // For YAML files, display as formatted code
-                    docContent.innerHTML = `<pre><code class="language-json">${escapeHtml(data.content)}</code></pre>`;
-                } else {
-                    // For Markdown and text files, use Marked.js
-                    docContent.innerHTML = marked.parse(data.content);
-                }
-                
-                // Apply syntax highlighting
-                docContent.querySelectorAll('pre code').forEach((block) => {
-                    hljs.highlightBlock(block);
-                });
-                
-                // Update the "Open in New Tab" button's URL
-                openInNewTab.onclick = () => {
-                    // Create a URL to the document viewer with the path to the document
-                    const viewerUrl = `/doc_viewer?path=${encodeURIComponent(filePath)}`;
-                    window.open(viewerUrl, '_blank');
-                };
-                
-                // Show the modal
-                docViewerModal.classList.remove('hidden');
-                
-            } catch (error) {
-                console.error('Error opening document:', error);
-                alert('Error opening document. Please try again.');
-            }
-        }
-
-        // Helper function to escape HTML content
-        function escapeHtml(unsafe) {
-            return unsafe
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
-        // Event listeners for document browser
-        refreshDocsBtn.addEventListener('click', loadDocumentsList);
-
-        // Close modal when the close button is clicked
-        closeModal.addEventListener('click', () => {
-            docViewerModal.classList.add('hidden');
-        });
-
-        // Close modal when clicking outside the content area
-        docViewerModal.addEventListener('click', (e) => {
-            if (e.target === docViewerModal) {
-                docViewerModal.classList.add('hidden');
-            }
-        });
-
-        // Also close on escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !docViewerModal.classList.contains('hidden')) {
-                docViewerModal.classList.add('hidden');
-            }
-        });
-
-        // Load documents list when page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            // Existing DOMContentLoaded event handler code...
-            
-            // Automatically load the document list
             loadDocumentsList();
         });
     </script>

@@ -2,6 +2,7 @@ import os
 import logging
 from flask import Flask, request, render_template, jsonify
 from dotenv import load_dotenv
+import time
 
 # Import modules
 from modules.chromadb_handler import init_db
@@ -122,6 +123,52 @@ def get_doc_endpoint(file_path):
     except Exception as e:
         logger.error(f"Error getting document {file_path}: {e}", exc_info=True)
         return jsonify({"status": "error", "error": str(e)}), 500
+        
+        
+@app.route("/reset_db", methods=["POST"])
+def reset_db_endpoint():
+    """Reset the ChromaDB and re-initialize it"""
+    try:
+        from modules.chromadb_handler import reset_database, init_db
+        success, message = reset_database()
+        
+        if success:
+            # Update our global database client and collection
+            # Sleep for a moment to ensure ChromaDB has time to settle
+            time.sleep(1)
+            global db_client, collection
+            db_client, collection = init_db()
+            
+            # Double-check that initialization succeeded
+            if db_client is None or collection is None:
+                return jsonify({
+                    "status": "error", 
+                    "error": "Database reset succeeded but re-initialization failed."
+                })
+                
+            return jsonify({"status": "success", "message": message})
+        else:
+            return jsonify({"status": "error", "error": message})
+    except Exception as e:
+        logger.error(f"Error in reset_db endpoint: {e}")
+        return jsonify({"status": "error", "error": str(e)})
+        
+        
+@app.route("/reindex_all", methods=["POST"])
+def reindex_all_endpoint():
+    """Force reindex of all documents"""
+    try:
+        result = index_documents(collection, force_reindex=True)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in reindex_all endpoint: {e}")
+        return jsonify({
+            "status": "error",
+            "error": str(e),
+            "indexed": 0,
+            "updated": 0, 
+            "skipped": 0,
+        })
         
         
 @app.route("/save_doc/<path:file_path>", methods=["POST"])
