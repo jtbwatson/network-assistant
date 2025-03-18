@@ -125,37 +125,6 @@ def get_doc_endpoint(file_path):
         logger.error(f"Error getting document {file_path}: {e}", exc_info=True)
         return jsonify({"status": "error", "error": str(e)}), 500
         
-        
-@app.route("/reset_db", methods=["POST"])
-def reset_db_endpoint():
-    """Reset the ChromaDB and re-initialize it"""
-    try:
-        from modules.chromadb_handler import reset_database, init_db
-        success, message = reset_database()
-        
-        if success:
-            # Update our global database client and collection
-            # Sleep for a moment to ensure ChromaDB has time to settle
-            time.sleep(2)
-            
-            # Attempt to reinitialize, but this may not always work without restart
-            global db_client, collection
-            db_client, collection = init_db()
-            
-            if db_client is None or collection is None:
-                return jsonify({
-                    "status": "warning", 
-                    "message": "Database reset succeeded, but a application restart is required for full initialization."
-                })
-                
-            return jsonify({"status": "success", "message": message})
-        else:
-            return jsonify({"status": "error", "error": message})
-    except Exception as e:
-        logger.error(f"Error in reset_db endpoint: {e}")
-        return jsonify({"status": "error", "error": str(e)})
-        
-        
 @app.route("/reindex_all", methods=["POST"])
 def reindex_all_endpoint():
     """Force reindex of all documents"""
@@ -172,23 +141,6 @@ def reindex_all_endpoint():
             "skipped": 0,
         })
 
-@app.route("/restart_app", methods=["POST"])
-def restart_app_endpoint():
-    """Restart the Flask application"""
-    try:
-        # This is a simple approach - it will exit the process
-        # and your service manager (systemd, etc.) should restart it
-        def restart():
-            time.sleep(1)
-            os._exit(0)
-            
-        threading.Thread(target=restart).start()
-        return jsonify({"status": "success", "message": "Application is restarting..."})
-    except Exception as e:
-        logger.error(f"Error restarting application: {e}")
-        return jsonify({"status": "error", "error": str(e)})
-        
-        
 @app.route("/save_doc/<path:file_path>", methods=["POST"])
 def save_doc_endpoint(file_path):
     """Save updated contents to a document"""

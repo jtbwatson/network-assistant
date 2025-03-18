@@ -165,8 +165,8 @@ def init_db():
 
 def reset_database():
     """
-    Reset the entire ChromaDB by properly closing connections,
-    removing the database directory, and reinitializing it.
+    Reset the ChromaDB by completely removing and recreating the database directory.
+    Handles permission issues and locked files.
     
     Returns:
         tuple: (success_flag, message)
@@ -174,113 +174,217 @@ def reset_database():
     if not config.CHROMA_AVAILABLE:
         return False, "ChromaDB is not available."
     
-    try:
-        import chromadb
-        
-        # Log the reset operation
-        logger.info(f"Resetting ChromaDB at {config.DB_DIR}")
-        
-        # First try to properly close any existing clients
-        # Create a temporary client if needed, then explicitly delete it
-        try:
-            logger.info("Attempting to close existing client connections...")
-            temp_client = chromadb.PersistentClient(path=config.DB_DIR)
-            # Access something to ensure connection is established
-            collections = temp_client.list_collections()
-            logger.info(f"Found {len(collections)} existing collections")
-            # Now explicitly delete the client to close connections
-            del temp_client
-            logger.info("Closed existing client connections")
-        except Exception as e:
-            logger.warning(f"No existing client to close or error closing: {e}")
-        
-        # Give the system a moment to fully release file handles
-        time.sleep(1)
-        
-        # Check if the database directory exists
-        db_path_exists = os.path.exists(config.DB_DIR)
-        
-        if db_path_exists:
-            # Create a backup before deleting
-            backup_dir = f"{config.DB_DIR}_backup_{int(time.time())}"
-            try:
-                shutil.copytree(config.DB_DIR, backup_dir)
-                logger.info(f"Created backup of database at {backup_dir}")
-            except Exception as e:
-                logger.warning(f"Failed to create backup: {e}")
-            
-            # Now remove all contents but keep the directory
-            for item in os.listdir(config.DB_DIR):
-                item_path = os.path.join(config.DB_DIR, item)
-                try:
-                    if os.path.isfile(item_path):
-                        os.unlink(item_path)
-                    elif os.path.isdir(item_path):
-                        shutil.rmtree(item_path)
-                except Exception as e:
-                    logger.error(f"Error removing {item_path}: {e}")
-            
-            logger.info("Database directory contents removed successfully.")
-        else:
-            # Create the directory if it doesn't exist
-            os.makedirs(config.DB_DIR, exist_ok=True)
-            logger.info("Created new database directory.")
-        
-        # Give the system another moment before creating a new client
-        time.sleep(1)
-        
-        # Create a completely new client
-        # This may require restarting the application to fully release resources
-        try:
-            # Initialize a fresh database
-            new_client = chromadb.PersistentClient(path=config.DB_DIR)
-            
-            # Get embedding function
-            emb_fn = get_embedding_function()
-            
-            # Create a new collection
-            new_collection = new_client.create_collection(
-                name=db_status.collection_name, 
-                embedding_function=emb_fn
-            )
-            
-            logger.info("Successfully created new database and collection")
-            
-            # Test the collection with a simple document
-            test_id = "test_reset_doc"
-            test_content = "This is a test document to verify the database is working."
-            new_collection.add(
-                ids=[test_id],
-                documents=[test_content],
-                metadatas=[{"source": "test", "type": "test"}]
-            )
-            
-            # Verify we can retrieve it
-            result = new_collection.get(ids=[test_id])
-            if not result or not result["ids"]:
-                raise Exception("Could not retrieve test document")
-                
-            # Delete the test document
-            new_collection.delete(ids=[test_id])
-            logger.info("Database reset verified with test document")
-            
-            # Update status
-            db_status.initialized = True
-            db_status.document_count = 0
-            
-            # Clean up
-            del new_client
-            
-            # Success - recommend application restart
-            return True, "Database reset successfully. For best results, please restart the application."
-            
-        except Exception as e:
-            logger.error(f"Error setting up new database: {e}")
-            return False, f"Error creating new database: {str(e)}"
+    import chromadb
+    import shutil
+    import time
+    import tempfile
+    import stat
+    import sys
     
+    # Log the reset operation
+    logger.info(f"Resetting ChromaDB at {config.DB_DIR}")
+    
+    # Step 1: Try to close any existing connections
+    try:
+        logger.info("Closing any existing database connections...")
+        try:
+            temp_client = chromadb.PersistentClient(path=config.DB_DIR)
+            collections = temp_client.list_collections()
+            logger.info(f"Found {len(collections)} collections")
+            
+            # Try to delete collections explicitly
+            for collection in collections:
+                try:
+                    logger.info(f"Attempting to delete collection: {collection.name}")
+                    temp_client.delete_collection(collection.name)
+                except Exception as e:
+                    logger.warning(f"Could not delete collection {collection.name}: {e}")
+                    
+            # Delete the client
+            del temp_client
+            logger.info("Closed database connections")
+        except Exception as e:
+            logger.warning(f"Error handling existing connections: {e}")
+        
+        # Force garbage collection to release file handles
+        import gc
+        gc.collect()
+        
+        # Wait a moment to ensure file handles are released
+        logger.info("Waiting for file handles to be released...")
+        time.sleep(2)
     except Exception as e:
-        logger.error(f"Error resetting database: {e}")
-        return False, f"Error resetting database: {str(e)}"
+        logger.warning(f"Error during connection cleanup: {e}")
+    
+    # Step 2: Create a backup if possible
+    backup_dir = None
+    if os.path.exists(config.DB_DIR):
+        backup_dir = f"{config.DB_DIR}_backup_{int(time.time())}"
+        try:
+            logger.info(f"Creating backup at {backup_dir}")
+            shutil.copytree(config.DB_DIR, backup_dir)
+            logger.info(f"Backup created at {backup_dir}")
+        except Exception as e:
+            logger.warning(f"Could not create backup: {e}")
+            backup_dir = None
+    
+    # Step 3: Completely remove the database directory with error handling
+    success = False
+    
+    # Use a temporary directory as an intermediary step
+    temp_dir = None
+    try:
+        if os.path.exists(config.DB_DIR):
+            # First try to fix permissions
+            logger.info("Checking and fixing permissions...")
+            try:
+                for root, dirs, files in os.walk(config.DB_DIR):
+                    for d in dirs:
+                        try:
+                            os.chmod(os.path.join(root, d), stat.S_IRWXU)
+                        except Exception:
+                            pass
+                    for f in files:
+                        try:
+                            os.chmod(os.path.join(root, f), stat.S_IRWXU)
+                        except Exception:
+                            pass
+            except Exception as e:
+                logger.warning(f"Error fixing permissions: {e}")
+            
+            # Try direct remove first
+            logger.info(f"Attempting to remove directory: {config.DB_DIR}")
+            try:
+                shutil.rmtree(config.DB_DIR)
+                logger.info("Successfully removed database directory")
+                success = True
+            except Exception as e:
+                logger.warning(f"Could not remove directory directly: {e}")
+                
+                # If direct removal failed, try rename and then remove
+                if not success:
+                    try:
+                        # Create a temporary directory
+                        temp_dir = tempfile.mkdtemp(prefix="chroma_temp_")
+                        temp_target = os.path.join(temp_dir, "old_db")
+                        
+                        logger.info(f"Attempting to rename directory to {temp_target}")
+                        # On Windows, this can often work even when rmtree fails
+                        os.rename(config.DB_DIR, temp_target)
+                        
+                        # Now try to remove the renamed directory
+                        try:
+                            shutil.rmtree(temp_target)
+                        except Exception as e2:
+                            logger.warning(f"Could not remove renamed directory: {e2}")
+                            # Not fatal, we've at least renamed it out of the way
+                            
+                        success = True
+                        logger.info("Successfully renamed directory out of the way")
+                    except Exception as e2:
+                        logger.error(f"Could not rename directory: {e2}")
+                        
+                        # One last desperate attempt - try to empty the directory
+                        if not success:
+                            try:
+                                logger.info("Attempting to empty directory contents...")
+                                for item in os.listdir(config.DB_DIR):
+                                    item_path = os.path.join(config.DB_DIR, item)
+                                    try:
+                                        if os.path.isfile(item_path):
+                                            os.unlink(item_path)
+                                        elif os.path.isdir(item_path):
+                                            shutil.rmtree(item_path)
+                                    except Exception as e3:
+                                        logger.warning(f"Could not remove {item_path}: {e3}")
+                                
+                                success = True
+                                logger.info("Successfully emptied directory")
+                            except Exception as e3:
+                                logger.error(f"Could not empty directory: {e3}")
+    except Exception as e:
+        logger.error(f"Error during database directory removal: {e}")
+    
+    # Clean up temp directory if it exists
+    if temp_dir and os.path.exists(temp_dir):
+        try:
+            shutil.rmtree(temp_dir)
+        except Exception:
+            pass
+    
+    # Step 4: Create a fresh directory
+    try:
+        logger.info(f"Creating fresh database directory at {config.DB_DIR}")
+        os.makedirs(config.DB_DIR, exist_ok=True)
+        
+        # Ensure proper permissions
+        os.chmod(config.DB_DIR, stat.S_IRWXU)
+        
+        logger.info("Successfully created fresh database directory")
+    except Exception as e:
+        logger.error(f"Could not create fresh directory: {e}")
+        return False, f"Failed to create database directory: {str(e)}"
+    
+    # Step 5: Initialize a fresh database
+    try:
+        # Wait a moment before creating new client
+        logger.info("Waiting before initializing new database...")
+        time.sleep(2)
+        
+        logger.info("Initializing new ChromaDB client...")
+        new_client = chromadb.PersistentClient(path=config.DB_DIR)
+        
+        # Get embedding function
+        emb_fn = get_embedding_function()
+        
+        # Create a new collection
+        collection_name = "network_docs"
+        logger.info(f"Creating new collection: {collection_name}")
+        new_collection = new_client.create_collection(
+            name=collection_name, 
+            embedding_function=emb_fn
+        )
+        
+        # Test with a simple document
+        logger.info("Testing new collection with sample document...")
+        test_id = "test_reset_doc"
+        test_content = "This is a test document to verify the database is working."
+        
+        new_collection.add(
+            ids=[test_id],
+            documents=[test_content],
+            metadatas=[{"source": "test", "type": "test"}]
+        )
+        
+        # Verify retrieval
+        result = new_collection.get(ids=[test_id])
+        if not result or not result["ids"]:
+            raise Exception("Could not retrieve test document")
+            
+        # Delete the test document
+        new_collection.delete(ids=[test_id])
+        logger.info("Database reset verified with test document")
+        
+        # Clean up
+        del new_collection
+        del new_client
+        
+        # Force garbage collection again
+        gc.collect()
+        
+        # Success
+        return True, "Database reset successfully. For best results, please restart the application."
+        
+    except Exception as e:
+        logger.error(f"Error setting up new database: {e}")
+        error_msg = str(e)
+        
+        # Special handling for specific errors
+        if "readonly database" in error_msg.lower():
+            # Add more detailed message for this common error
+            return False, "Database appears to be locked or have permission issues. Please restart the application and try again."
+        
+        return False, f"Error creating new database: {error_msg}"
 
 
 def get_database_stats():

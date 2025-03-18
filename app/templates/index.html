@@ -179,29 +179,17 @@
             <div class="md:col-span-1">
                 <div class="bg-gray-800 rounded-lg shadow-md p-4 mb-4 border border-gray-700">
                     <h2 class="font-bold text-lg mb-3 text-gray-200">Document Management</h2>
-                    <div class="mb-3">
+                    <div class="flex space-x-2">
                         <button id="indexDocs"
-                            class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 w-full transition-colors mb-2">
+                            class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 flex-1 transition-colors">
                             Index Documents
                         </button>
-                        <div id="indexStatus" class="mt-1 text-sm text-gray-400"></div>
-                    </div>
-                    <div class="flex flex-col space-y-2 pt-2 border-t border-gray-700">
-                        <h3 class="font-medium text-sm text-gray-300 mb-1">Database Maintenance</h3>
                         <button id="reindexAll"
-                            class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 w-full transition-colors text-sm">
+                            class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 flex-1 transition-colors text-sm">
                             Force Reindex All
                         </button>
-                        <button id="resetDb"
-                            class="bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700 w-full transition-colors text-sm"
-                            data-confirm="This will delete and rebuild the entire vector database. Continue?">
-                            Reset Database
-                        </button>
-                        <button id="restartApp"
-                            class="bg-yellow-600 text-white py-2 px-4 rounded hover:bg-yellow-700 w-full transition-colors text-sm">
-                            Restart Application
-                        </button>
                     </div>
+                    <div id="indexStatus" class="mt-2 text-sm text-gray-400"></div>
                 </div>
 
                 <!-- Document Browser section -->
@@ -299,7 +287,6 @@
             const refreshDocsBtn = document.getElementById('refreshDocs');
             const filesList = document.getElementById('filesList');
             const reindexAllBtn = document.getElementById('reindexAll');
-            const resetDbBtn = document.getElementById('resetDb');
 
             // Set up Marked.js options for security and code highlighting
             marked.setOptions({
@@ -571,7 +558,6 @@
                 indexStatus.textContent = 'Reindexing all documents...';
                 reindexAllBtn.disabled = true;
                 indexDocsBtn.disabled = true;
-                resetDbBtn.disabled = true;
 
                 try {
                     const response = await fetch('/reindex_all', {
@@ -598,80 +584,10 @@
 
                 reindexAllBtn.disabled = false;
                 indexDocsBtn.disabled = false;
-                resetDbBtn.disabled = false;
-            });
-
-            // Reset the database
-            resetDbBtn.addEventListener('click', async () => {
-                const confirmMessage = resetDbBtn.dataset.confirm || 'Are you sure?';
-                if (!confirm(confirmMessage)) {
-                    return;
-                }
-
-                indexStatus.textContent = 'Resetting database...';
-                resetDbBtn.disabled = true;
-                indexDocsBtn.disabled = true;
-                reindexAllBtn.disabled = true;
-
-                try {
-                    const response = await fetch('/reset_db', {
-                        method: 'POST'
-                    });
-
-                    const data = await response.json();
-
-                    if (data.status === 'error') {
-                        indexStatus.textContent = data.error;
-                        indexStatus.className = 'mt-1 text-sm text-red-400';
-                    } else {
-                        indexStatus.textContent = data.message;
-                        indexStatus.className = 'mt-1 text-sm text-green-400';
-
-                        // Refresh status to get the updated total count
-                        await checkAppStatus();
-
-                        // Prompt user to reindex
-                        setTimeout(() => {
-                            if (confirm('Database reset successful. Would you like to reindex all documents now?')) {
-                                reindexAllBtn.click();
-                            }
-                        }, 500);
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    indexStatus.textContent = 'Error resetting database.';
-                    indexStatus.className = 'mt-1 text-sm text-red-400';
-                }
-
-                resetDbBtn.disabled = false;
-                indexDocsBtn.disabled = false;
-                reindexAllBtn.disabled = false;
             });
 
             // Load documents list when page loads
             loadDocumentsList();
-        });
-        
-        document.getElementById('restartApp').addEventListener('click', async () => {
-            if (confirm('Are you sure you want to restart the application?')) {
-                try {
-                    const response = await fetch('/restart_app', {
-                        method: 'POST'
-                    });
-                    const data = await response.json();
-                    if (data.status === 'success') {
-                        alert('Application is restarting. Please refresh this page in a few seconds.');
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 5000);
-                    } else {
-                        alert(`Error: ${data.error}`);
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Error restarting application.');
-                }
-            }
         });
     </script>
 
