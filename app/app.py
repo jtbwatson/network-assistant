@@ -3,6 +3,7 @@ import logging
 from flask import Flask, request, render_template, jsonify
 from dotenv import load_dotenv
 import time
+import threading
 
 # Import modules
 from modules.chromadb_handler import init_db
@@ -135,15 +136,16 @@ def reset_db_endpoint():
         if success:
             # Update our global database client and collection
             # Sleep for a moment to ensure ChromaDB has time to settle
-            time.sleep(1)
+            time.sleep(2)
+            
+            # Attempt to reinitialize, but this may not always work without restart
             global db_client, collection
             db_client, collection = init_db()
             
-            # Double-check that initialization succeeded
             if db_client is None or collection is None:
                 return jsonify({
-                    "status": "error", 
-                    "error": "Database reset succeeded but re-initialization failed."
+                    "status": "warning", 
+                    "message": "Database reset succeeded, but a application restart is required for full initialization."
                 })
                 
             return jsonify({"status": "success", "message": message})
@@ -169,6 +171,22 @@ def reindex_all_endpoint():
             "updated": 0, 
             "skipped": 0,
         })
+
+@app.route("/restart_app", methods=["POST"])
+def restart_app_endpoint():
+    """Restart the Flask application"""
+    try:
+        # This is a simple approach - it will exit the process
+        # and your service manager (systemd, etc.) should restart it
+        def restart():
+            time.sleep(1)
+            os._exit(0)
+            
+        threading.Thread(target=restart).start()
+        return jsonify({"status": "success", "message": "Application is restarting..."})
+    except Exception as e:
+        logger.error(f"Error restarting application: {e}")
+        return jsonify({"status": "error", "error": str(e)})
         
         
 @app.route("/save_doc/<path:file_path>", methods=["POST"])
