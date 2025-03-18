@@ -4,7 +4,7 @@
 
 ### 1. Corporate WiFi
 | **Field**                  | **Value**                                 |
-|----------------------------|-------------------------------------------|
+| -------------------------- | ----------------------------------------- |
 | **SSID Name:**             | `CORP-SECURE`                             |
 | **Purpose:**               | Corporate WiFi for internal use           |
 | **Security Protocol:**     | WPA2-Enterprise                           |
@@ -36,16 +36,16 @@
     - This setup ensures that the next hop for traffic on the VLAN is the core switches.
 
 #### ClearPass NAC Authentication Example
-| **Field**                  | **Value**                  |
-|----------------------------|----------------------------|
-| **Service:**               | `Corp-WiFi-802.1X`         |
-| **Authentication Method:** | `EAP-TLS`                  |
-| **Authentication Source:** | `AD-CORP-DOMAIN`           |
-| **Authorization Source:**  | `CORP-LDAP-SERVER`         |
-| **Roles:**                 | `corporate-wifi-role`      |
-| **Enforcement Profiles:**  | `corp-access-profile`      |
-| **Service Monitor Mode:**  | `Disabled`                 |
-| **Online Status:**         | `Not Available`            |
+| **Field**                  | **Value**             |
+| -------------------------- | --------------------- |
+| **Service:**               | `Corp-WiFi-802.1X`    |
+| **Authentication Method:** | `EAP-TLS`             |
+| **Authentication Source:** | `AD-CORP-DOMAIN`      |
+| **Authorization Source:**  | `CORP-LDAP-SERVER`    |
+| **Roles:**                 | `corporate-wifi-role` |
+| **Enforcement Profiles:**  | `corp-access-profile` |
+| **Service Monitor Mode:**  | `Disabled`            |
+| **Online Status:**         | `Not Available`       |
 
 #### Additional Information
 - **Radius:WLC:WLC-User-Role:** `wlc-corporate-wifi-role`
@@ -62,7 +62,7 @@
 
 ### 2. Staff BYOD WiFi
 | **Field**                  | **Value**                                                         |
-|----------------------------|-------------------------------------------------------------------|
+| -------------------------- | ----------------------------------------------------------------- |
 | **SSID Name:**             | `STAFF-BYOD`                                                      |
 | **Purpose:**               | WiFi for staff personal devices and corporate Macbooks (BYOD)     |
 | **Security Protocol:**     | WPA2-PSK                                                          |
@@ -100,18 +100,18 @@
     - DHCP is provided by the firewall.
 
 #### ClearPass NAC Authentication Example
-| **Field**                  | **Value**                  |
-|----------------------------|----------------------------|
-| **Service:**               | `BYOD-Device-Auth`         |
-| **Authentication Method:** | `MAC-AUTH`                 |
-| **Authentication Source:** | `AD-CORP-DOMAIN`           |
-| **Authorization Source:**  | `BYOD-Device-Repository`   |
-| **Roles:**                 | `staff-wifi-role`          |
-| **Enforcement Profiles:**  | `byod-access-profile`      |
-| **Service Monitor Mode:**  | `Disabled`                 |
-| **Online Status:**         | `Offline`                  |
-| **System Posture Status:** | `UNKNOWN (100)`            |
-| **Audit Posture Status:**  | `UNKNOWN (100)`            |
+| **Field**                  | **Value**                |
+| -------------------------- | ------------------------ |
+| **Service:**               | `BYOD-Device-Auth`       |
+| **Authentication Method:** | `MAC-AUTH`               |
+| **Authentication Source:** | `AD-CORP-DOMAIN`         |
+| **Authorization Source:**  | `BYOD-Device-Repository` |
+| **Roles:**                 | `staff-wifi-role`        |
+| **Enforcement Profiles:**  | `byod-access-profile`    |
+| **Service Monitor Mode:**  | `Disabled`               |
+| **Online Status:**         | `Offline`                |
+| **System Posture Status:** | `UNKNOWN (100)`          |
+| **Audit Posture Status:**  | `UNKNOWN (100)`          |
 
 #### Additional Information
 - **Radius:WLC:WLC-User-Role:** `wlc-staff-wifi-role`
@@ -128,7 +128,7 @@
 
 ### 3. Guest WiFi
 | **Field**                  | **Value**                                                    |
-|----------------------------|--------------------------------------------------------------|
+| -------------------------- | ------------------------------------------------------------ |
 | **SSID Name:**             | `GUEST-NET`                                                  |
 | **Purpose:**               | WiFi for guest users                                         |
 | **Security Protocol:**     | WPA2-PSK                                                     |
@@ -165,18 +165,18 @@
     - DHCP is provided by the firewall.
 
 #### ClearPass NAC Authentication Example
-| **Field**                  | **Value**                |
-|----------------------------|--------------------------|
-| **Service:**               | `Guest-Portal-Auth`      |
-| **Authentication Method:** | `MAC-AUTH`               |
-| **Authentication Source:** | `Guest-Account-DB`       |
-| **Authorization Source:**  | `Guest-Policy-Store`     |
-| **Roles:**                 | `guest-wifi-role`        |
-| **Enforcement Profiles:**  | `guest-access-profile`   |
-| **Service Monitor Mode:**  | `Disabled`               |
-| **Online Status:**         | `Offline`                |
-| **System Posture Status:** | `UNKNOWN (100)`          |
-| **Audit Posture Status:**  | `UNKNOWN (100)`          |
+| **Field**                  | **Value**              |
+| -------------------------- | ---------------------- |
+| **Service:**               | `Guest-Portal-Auth`    |
+| **Authentication Method:** | `MAC-AUTH`             |
+| **Authentication Source:** | `Guest-Account-DB`     |
+| **Authorization Source:**  | `Guest-Policy-Store`   |
+| **Roles:**                 | `guest-wifi-role`      |
+| **Enforcement Profiles:**  | `guest-access-profile` |
+| **Service Monitor Mode:**  | `Disabled`             |
+| **Online Status:**         | `Offline`              |
+| **System Posture Status:** | `UNKNOWN (100)`        |
+| **Audit Posture Status:**  | `UNKNOWN (100)`        |
 
 #### Additional Information
 - **Radius:WLC:WLC-User-Role:** `wlc-guest-wifi-role`
@@ -194,12 +194,12 @@
 ## Wireless Access Points
 
 ### Access Point Models
-| **Model**             | **Count** | **Primary Locations**  | **Notes**                       |
-|-----------------------|-----------|------------------------|---------------------------------|
-| Cisco Catalyst 9130   | 158       | Main Campus, HQ        | Wi-Fi 6, 4x4 MIMO               |
-| Cisco Catalyst 9120   | 267       | Branch Offices         | Wi-Fi 6, 2x2 MIMO               |
-| Cisco Aironet 3800    | 112       | Warehouse, Industrial  | Legacy, planned for replacement |
-| Meraki MR46           | 54        | Remote Sites           | Cloud-managed                   |
+| **Model**           | **Count** | **Primary Locations** | **Notes**                       |
+| ------------------- | --------- | --------------------- | ------------------------------- |
+| Cisco Catalyst 9130 | 158       | Main Campus, HQ       | Wi-Fi 6, 4x4 MIMO               |
+| Cisco Catalyst 9120 | 267       | Branch Offices        | Wi-Fi 6, 2x2 MIMO               |
+| Cisco Aironet 3800  | 112       | Warehouse, Industrial | Legacy, planned for replacement |
+| Meraki MR46         | 54        | Remote Sites          | Cloud-managed                   |
 
 ### Access Point Placement Guidelines
 - **Office Environments**: 1 AP per 1000 sq ft
@@ -211,7 +211,7 @@
 
 ### RF Profiles
 | **Profile Name**      | **Target Environment** | **Key Settings**                                   |
-|-----------------------|------------------------|----------------------------------------------------|
+| --------------------- | ---------------------- | -------------------------------------------------- |
 | Corporate-Standard    | Office spaces          | Auto channel, 5 GHz preferred, -67 dBm min RSSI    |
 | Corporate-HighDensity | Conference rooms       | Fixed channel plan, RRM disabled, -65 dBm min RSSI |
 | Corporate-Warehouse   | Warehouse, industrial  | Max TX power, 2.4 GHz preferred, -72 dBm min RSSI  |
@@ -224,19 +224,19 @@
 ## RADIUS Configuration
 
 ### RADIUS Servers
-| **Server Name**         | **IP Address**  | **Port** | **Purpose**              |
-|-------------------------|-----------------|----------|--------------------------|
-| radius1.corp.local      | 10.10.20.10     | 1812     | Primary Authentication   |
-| radius2.corp.local      | 10.10.20.11     | 1812     | Secondary Authentication |
-| accounting1.corp.local  | 10.10.20.10     | 1813     | Primary Accounting       |
-| accounting2.corp.local  | 10.10.20.11     | 1813     | Secondary Accounting     |
+| **Server Name**        | **IP Address** | **Port** | **Purpose**              |
+| ---------------------- | -------------- | -------- | ------------------------ |
+| radius1.corp.local     | 10.10.20.10    | 1812     | Primary Authentication   |
+| radius2.corp.local     | 10.10.20.11    | 1812     | Secondary Authentication |
+| accounting1.corp.local | 10.10.20.10    | 1813     | Primary Accounting       |
+| accounting2.corp.local | 10.10.20.11    | 1813     | Secondary Accounting     |
 
 ### RADIUS Server Groups
-| **Group Name**  | **Servers**                                    | **Purpose**              |
-|-----------------|------------------------------------------------|--------------------------|
-| Corp-Auth       | radius1.corp.local, radius2.corp.local         | Corporate authentication |
-| Guest-Auth      | radius1.corp.local, radius2.corp.local         | Guest authentication     |
-| Accounting      | accounting1.corp.local, accounting2.corp.local | All accounting           |
+| **Group Name** | **Servers**                                    | **Purpose**              |
+| -------------- | ---------------------------------------------- | ------------------------ |
+| Corp-Auth      | radius1.corp.local, radius2.corp.local         | Corporate authentication |
+| Guest-Auth     | radius1.corp.local, radius2.corp.local         | Guest authentication     |
+| Accounting     | accounting1.corp.local, accounting2.corp.local | All accounting           |
 
 ## Troubleshooting Common Issues
 

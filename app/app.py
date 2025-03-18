@@ -2,11 +2,13 @@ import os
 import logging
 from flask import Flask, request, render_template, jsonify
 from dotenv import load_dotenv
-
-
 # Import modules
 from modules.chromadb_handler import init_db
-from modules.document_manager import get_document_status, index_documents, query_vector_db
+from modules.document_manager import (
+    get_document_status,
+    index_documents,
+    query_vector_db,
+)
 from modules.conversation import ConversationTracker
 from modules.ollama_client import fetch_model_info, generate_response
 import config
@@ -26,6 +28,7 @@ db_client, collection = init_db()
 
 # Initialize conversation tracker
 conversation_tracker = ConversationTracker()
+
 
 # --- Web Routes ---
 @app.route("/")
@@ -59,7 +62,9 @@ def index_endpoint():
 @app.route("/document_status", methods=["GET"])
 def document_status_endpoint():
     try:
-        status = get_document_status(config.DOCS_DIR, collection, config.CHROMA_AVAILABLE)
+        status = get_document_status(
+            config.DOCS_DIR, collection, config.CHROMA_AVAILABLE
+        )
         status["counts"] = {
             "indexed": len(status["indexed"]),
             "unindexed": len(status["unindexed"]),
@@ -85,7 +90,9 @@ def document_status_endpoint():
 
 @app.route("/status", methods=["GET"])
 def status_endpoint():
-    doc_status = get_document_status(config.DOCS_DIR, collection, config.CHROMA_AVAILABLE)
+    doc_status = get_document_status(
+        config.DOCS_DIR, collection, config.CHROMA_AVAILABLE
+    )
     model_info = fetch_model_info()
     return jsonify(
         {
@@ -103,6 +110,7 @@ def status_endpoint():
 def list_docs_endpoint():
     """Return a list of all documents in the docs directory"""
     from modules.document_manager import list_documents
+
     try:
         doc_files = list_documents()
         return jsonify({"status": "success", "files": doc_files})
@@ -115,15 +123,18 @@ def list_docs_endpoint():
 def get_doc_endpoint(file_path):
     """Return contents of a specific document"""
     from modules.document_manager import get_document_content
+
     try:
         result = get_document_content(file_path)
         if result.get("status") == "error":
             return jsonify(result), result.get("code", 500)
         return jsonify(result)
     except Exception as e:
-        logger.error(f"🔴 Error getting document {file_path}: {e}", exc_info=True)
+        logger.error(
+            f"🔴 Error getting document {file_path}: {e}", exc_info=True)
         return jsonify({"status": "error", "error": str(e)}), 500
-        
+
+
 @app.route("/reindex_all", methods=["POST"])
 def reindex_all_endpoint():
     """Force reindex of all documents"""
@@ -132,32 +143,37 @@ def reindex_all_endpoint():
         return jsonify(result)
     except Exception as e:
         logger.error(f"🔴 Error in reindex_all endpoint: {e}")
-        return jsonify({
-            "status": "error",
-            "error": str(e),
-            "indexed": 0,
-            "updated": 0, 
-            "skipped": 0,
-        })
+        return jsonify(
+            {
+                "status": "error",
+                "error": str(e),
+                "indexed": 0,
+                "updated": 0,
+                "skipped": 0,
+            }
+        )
+
 
 @app.route("/save_doc/<path:file_path>", methods=["POST"])
 def save_doc_endpoint(file_path):
     """Save updated contents to a document"""
     from modules.document_manager import save_document_content
+
     try:
         data = request.get_json(silent=True, force=True)
         if not data or "content" not in data:
             return jsonify({"status": "error", "error": "No content provided"}), 400
-            
+
         content = data["content"]
         result = save_document_content(file_path, content)
-        
+
         if result.get("status") == "error":
             return jsonify(result), 400
-            
+
         return jsonify(result)
     except Exception as e:
-        logger.error(f"🔴 Error saving document {file_path}: {e}", exc_info=True)
+        logger.error(
+            f"🔴 Error saving document {file_path}: {e}", exc_info=True)
         return jsonify({"status": "error", "error": str(e)}), 500
 
 
@@ -173,55 +189,63 @@ def chat():
         data = request.get_json(silent=True, force=True)
         message = data.get("message", "")
         session_id = data.get("session_id", "default")
-        
+
         # Add user message to conversation history
         conversation_tracker.add_message(session_id, "user", message)
-        
+
         # Get relevant context from vector database
         context = query_vector_db(collection, message)
-        
+
         # Get conversation history
         history = conversation_tracker.get_conversation(session_id)
-        
+
         # Generate response
-        assistant_response, success = generate_response(message, context, history)
-        
+        assistant_response, success = generate_response(
+            message, context, history)
+
         # Add assistant response to conversation
-        conversation_tracker.add_message(session_id, "assistant", assistant_response)
-        
+        conversation_tracker.add_message(
+            session_id, "assistant", assistant_response)
+
         # Get sources for the response
         sources = []
         if config.CHROMA_AVAILABLE and collection is not None:
             try:
                 # Specify include parameter to prevent adding new vectors
-                results = collection.query(query_texts=[message], include=["metadatas"])
+                results = collection.query(
+                    query_texts=[message], include=["metadatas"])
                 if results.get("metadatas") and results["metadatas"][0]:
                     sources = [
                         os.path.basename(m["source"]) for m in results["metadatas"][0]
                     ]
             except Exception as e:
                 logger.error(f"🔴 Error getting sources: {e}")
-                
-        return jsonify({
-            "response": assistant_response,
-            "context_used": bool(context),
-            "sources": sources,
-        })
+
+        return jsonify(
+            {
+                "response": assistant_response,
+                "context_used": bool(context),
+                "sources": sources,
+            }
+        )
     except Exception as e:
         logger.error(f"🔴 Error in chat endpoint: {e}")
-        return jsonify({
-            "response": f"An error occurred: {str(e)}",
-            "context_used": False,
-            "sources": [],
-        })
+        return jsonify(
+            {
+                "response": f"An error occurred: {str(e)}",
+                "context_used": False,
+                "sources": [],
+            }
+        )
 
 
 if __name__ == "__main__":
     os.makedirs(config.DOCS_DIR, exist_ok=True)
-    
+
     # Check Ollama connection
     from modules.ollama_client import check_ollama_connection
+
     check_ollama_connection()
-    
+
     # Start the Flask app
     app.run(debug=True, host="0.0.0.0", port=5000)

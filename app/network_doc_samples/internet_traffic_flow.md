@@ -7,72 +7,72 @@ The company operates a hybrid internet access model with centralized breakout at
 
 ### Datacenter Internet Connectivity
 
-| **Field**                    | **Value**                                            |
-|------------------------------|-----------------------------------------------------|
-| **Connection Type:**         | Dedicated Internet Access (DIA)                      |
-| **Primary Carrier:**         | GlobeConnect                                         |
-| **Secondary Carrier:**       | NetwayLink                                           |
-| **Bandwidth:**               | 10 Gbps per carrier (20 Gbps total per datacenter)   |
-| **Router Models:**           | Cisco ASR 1000 Series                                |
-| **Deployment:**              | Redundant pair per datacenter                        |
-| **BGP Configuration:**       | eBGP with both carriers (full routes)                |
-| **DDoS Protection:**         | SecureEdge Cloud + Carrier-provided                  |
-| **Traffic Prioritization:**  | QoS for business-critical traffic                    |
+| **Field**                   | **Value**                                          |
+| --------------------------- | -------------------------------------------------- |
+| **Connection Type:**        | Dedicated Internet Access (DIA)                    |
+| **Primary Carrier:**        | GlobeConnect                                       |
+| **Secondary Carrier:**      | NetwayLink                                         |
+| **Bandwidth:**              | 10 Gbps per carrier (20 Gbps total per datacenter) |
+| **Router Models:**          | Cisco ASR 1000 Series                              |
+| **Deployment:**             | Redundant pair per datacenter                      |
+| **BGP Configuration:**      | eBGP with both carriers (full routes)              |
+| **DDoS Protection:**        | SecureEdge Cloud + Carrier-provided                |
+| **Traffic Prioritization:** | QoS for business-critical traffic                  |
 
 #### Datacenter Internet Edge Diagram
 ```
-                  +-------------------+     +-------------------+
-                  |    GlobeConnect   |     |     NetwayLink    |
-                  +-------------------+     +-------------------+
-                            |                         |
-                            v                         v
-            +----------------+                  +----------------+
-            | Internet Edge  |                  | Internet Edge  |
-            | Router (ASR1)  |                  | Router (ASR2)  |
-            +----------------+                  +----------------+
-                     |                                 |
-                     v                                 v
-              +----------------------------------------+
-              |          Palo Alto Firewall HA Pair    |
-              +----------------------------------------+
-                               |
-                               v
-                    +--------------------+
-                    |   SecureEdge Cloud |
-                    |   Proxy Service    |
-                    +--------------------+
-                               |
-                               v
-                    +--------------------+
-                    |  Internal Network  |
-                    +--------------------+
+               +-------------------+               +-------------------+
+               |    GlobeConnect   |               |     NetwayLink    |
+               +-------------------+               +-------------------+
+                          |                                 |
+                          v                                 v
+               +----------------+                  +----------------+
+               | Internet Edge  |                  | Internet Edge  |
+               | Router (ASR1)  |                  | Router (ASR2)  |
+               +----------------+                  +----------------+
+                          |                                 |
+                          v                                 v
+                   +--------------------------------------------+
+                   |       Palo Alto Firewall HA Pair           |
+                   +--------------------------------------------+
+                                     |
+                                     v
+                          +------------------------+
+                          |    SecureEdge Cloud    |
+                          |     Proxy Service      |
+                          +------------------------+
+                                     |
+                                     v
+                          +------------------------+
+                          |    Internal Network    |
+                          +------------------------+
 ```
 
 ### Local Internet Breakout Connectivity
 
-| **Field**                    | **Value**                                            |
-|------------------------------|-----------------------------------------------------|
-| **Site Selection Criteria:** | High user count, latency-sensitive applications      |
-| **Connection Type:**         | Business broadband + 4G/LTE backup                   |
-| **Primary Carrier:**         | Varies by region (typically GlobeConnect)            |
-| **Secondary Carrier:**       | Varies by region (typically NetwayLink)              |
-| **Bandwidth:**               | 1-2 Gbps primary, 100-200 Mbps backup               |
-| **Router Models:**           | Cisco ISR 4000 Series                                |
-| **Deployment:**              | Redundant pair per site                              |
-| **Firewall:**                | Palo Alto PA-3200 Series                             |
-| **SD-WAN:**                  | Enabled for intelligent path selection               |
+| **Field**                    | **Value**                                       |
+| ---------------------------- | ----------------------------------------------- |
+| **Site Selection Criteria:** | High user count, latency-sensitive applications |
+| **Connection Type:**         | Business broadband + 4G/LTE backup              |
+| **Primary Carrier:**         | Varies by region (typically GlobeConnect)       |
+| **Secondary Carrier:**       | Varies by region (typically NetwayLink)         |
+| **Bandwidth:**               | 1-2 Gbps primary, 100-200 Mbps backup           |
+| **Router Models:**           | Cisco ISR 4000 Series                           |
+| **Deployment:**              | Redundant pair per site                         |
+| **Firewall:**                | Palo Alto PA-3200 Series                        |
+| **SD-WAN:**                  | Enabled for intelligent path selection          |
 
 #### Local Breakout Sites
 
-| **Region**  | **Site Name**      | **Primary Bandwidth** | **Notes**                           |
-|-------------|--------------------|-----------------------|-------------------------------------|
-| Americas    | New York Office    | 2 Gbps                | Regional headquarters                |
-| Americas    | San Francisco      | 1 Gbps                | R&D focused site                    |
-| Europe      | London Office      | 2 Gbps                | Regional headquarters                |
-| Europe      | Berlin Office      | 1 Gbps                | Large engineering center            |
-| Asia        | Tokyo Office       | 1 Gbps                | Regional headquarters                |
-| Asia        | Bangalore Office   | 1 Gbps                | Development center                  |
-| ANZ         | Sydney Office      | 1 Gbps                | Regional headquarters                |
+| **Region** | **Site Name**    | **Primary Bandwidth** | **Notes**                |
+| ---------- | ---------------- | --------------------- | ------------------------ |
+| Americas   | New York Office  | 2 Gbps                | Regional headquarters    |
+| Americas   | San Francisco    | 1 Gbps                | R&D focused site         |
+| Europe     | London Office    | 2 Gbps                | Regional headquarters    |
+| Europe     | Berlin Office    | 1 Gbps                | Large engineering center |
+| Asia       | Tokyo Office     | 1 Gbps                | Regional headquarters    |
+| Asia       | Bangalore Office | 1 Gbps                | Development center       |
+| ANZ        | Sydney Office    | 1 Gbps                | Regional headquarters    |
 
 ## Traffic Flow Patterns
 
@@ -125,72 +125,72 @@ The company operates a hybrid internet access model with centralized breakout at
 
 ### URL Filtering
 
-| **Category**              | **Policy**                 | **Examples**                       |
-|---------------------------|----------------------------|-----------------------------------|
-| **Malicious Sites**       | Block                      | Phishing, malware, command & control |
-| **Adult Content**         | Block                      | Adult material, gambling           |
-| **Suspicious Content**    | Allow with warning         | Newly registered domains, hacking  |
-| **Social Media**          | Allow with quota           | Facebook, Twitter, LinkedIn        |
-| **Streaming Media**       | Rate limited               | YouTube, Netflix, Spotify          |
-| **Business Applications** | Allow                      | Office 365, Salesforce, Workday    |
+| **Category**              | **Policy**         | **Examples**                         |
+| ------------------------- | ------------------ | ------------------------------------ |
+| **Malicious Sites**       | Block              | Phishing, malware, command & control |
+| **Adult Content**         | Block              | Adult material, gambling             |
+| **Suspicious Content**    | Allow with warning | Newly registered domains, hacking    |
+| **Social Media**          | Allow with quota   | Facebook, Twitter, LinkedIn          |
+| **Streaming Media**       | Rate limited       | YouTube, Netflix, Spotify            |
+| **Business Applications** | Allow              | Office 365, Salesforce, Workday      |
 
 ### Application Control
 
-| **Application Type**      | **Policy**                 | **Examples**                       |
-|---------------------------|----------------------------|-----------------------------------|
-| **Collaboration Tools**   | Allow                      | Zoom, Teams, Slack                 |
-| **Cloud Storage**         | Allow corporate approved   | OneDrive, Google Drive (corporate) |
-| **Personal Storage**      | Block upload               | Dropbox personal, WeTransfer       |
-| **Remote Access**         | Allow corporate approved   | Corporate VPN, RDP to approved hosts |
-| **File Sharing**          | Block                      | BitTorrent, P2P applications       |
-| **Anonymizers**           | Block                      | TOR, VPN services, proxies         |
+| **Application Type**    | **Policy**               | **Examples**                         |
+| ----------------------- | ------------------------ | ------------------------------------ |
+| **Collaboration Tools** | Allow                    | Zoom, Teams, Slack                   |
+| **Cloud Storage**       | Allow corporate approved | OneDrive, Google Drive (corporate)   |
+| **Personal Storage**    | Block upload             | Dropbox personal, WeTransfer         |
+| **Remote Access**       | Allow corporate approved | Corporate VPN, RDP to approved hosts |
+| **File Sharing**        | Block                    | BitTorrent, P2P applications         |
+| **Anonymizers**         | Block                    | TOR, VPN services, proxies           |
 
 ### Data Loss Prevention
 
-| **Data Type**             | **Control**                | **Action**                         |
-|---------------------------|----------------------------|-----------------------------------|
-| **PII Data**              | Pattern matching           | Block transmission, alert security |
-| **Credit Card Numbers**   | Pattern matching, validation | Block transmission, alert security |
-| **Intellectual Property** | Fingerprinting            | Block transmission, alert security |
-| **Source Code**           | File type detection        | Block to unapproved destinations   |
+| **Data Type**             | **Control**                  | **Action**                          |
+| ------------------------- | ---------------------------- | ----------------------------------- |
+| **PII Data**              | Pattern matching             | Block transmission, alert security  |
+| **Credit Card Numbers**   | Pattern matching, validation | Block transmission, alert security  |
+| **Intellectual Property** | Fingerprinting               | Block transmission, alert security  |
+| **Source Code**           | File type detection          | Block to unapproved destinations    |
 | **Financial Data**        | Keyword and pattern matching | Allow to approved destinations only |
 
 ## DNS Architecture
 
 ### Internal DNS
 
-| **Field**                    | **Value**                                         |
-|------------------------------|--------------------------------------------------|
-| **DNS Server Platform:**     | Microsoft Active Directory DNS                    |
-| **Deployment:**              | Redundant servers in each datacenter              |
-| **Zone Structure:**          | corp.local (internal), subdomain per business unit |
-| **Dynamic DNS:**             | Enabled for internal clients                      |
-| **DNS Security:**            | DNSSEC for internal zones                         |
+| **Field**                | **Value**                                          |
+| ------------------------ | -------------------------------------------------- |
+| **DNS Server Platform:** | Microsoft Active Directory DNS                     |
+| **Deployment:**          | Redundant servers in each datacenter               |
+| **Zone Structure:**      | corp.local (internal), subdomain per business unit |
+| **Dynamic DNS:**         | Enabled for internal clients                       |
+| **DNS Security:**        | DNSSEC for internal zones                          |
 
 ### External DNS
 
-| **Field**                    | **Value**                                         |
-|------------------------------|--------------------------------------------------|
-| **DNS Provider:**            | Mixed (Cloudflare + regional providers)           |
-| **Redundancy:**              | Minimum 2 providers per domain                    |
-| **Security:**                | DNSSEC enabled, CAA records                       |
-| **Monitoring:**              | 24/7 external monitoring service                  |
+| **Field**         | **Value**                               |
+| ----------------- | --------------------------------------- |
+| **DNS Provider:** | Mixed (Cloudflare + regional providers) |
+| **Redundancy:**   | Minimum 2 providers per domain          |
+| **Security:**     | DNSSEC enabled, CAA records             |
+| **Monitoring:**   | 24/7 external monitoring service        |
 
 ### Secure DNS Architecture
 
-| **Component**                | **Implementation**                                |
-|------------------------------|--------------------------------------------------|
-| **DNS Filtering:**           | SecureEdge Cloud DNS security                     |
-| **Query Encryption:**        | DNS over HTTPS (DoH) for compatible clients       |
-| **Split DNS:**               | Separate internal/external resolution paths       |
-| **DNS Analytics:**           | Logging and analysis for security monitoring      |
+| **Component**         | **Implementation**                           |
+| --------------------- | -------------------------------------------- |
+| **DNS Filtering:**    | SecureEdge Cloud DNS security                |
+| **Query Encryption:** | DNS over HTTPS (DoH) for compatible clients  |
+| **Split DNS:**        | Separate internal/external resolution paths  |
+| **DNS Analytics:**    | Logging and analysis for security monitoring |
 
 ## Quality of Service (QoS)
 
 ### Internet Traffic Classification
 
 | **Traffic Type**           | **Priority** | **DSCP Marking** | **Bandwidth Allocation** |
-|----------------------------|--------------|------------------|--------------------------|
+| -------------------------- | ------------ | ---------------- | ------------------------ |
 | **Business Critical Apps** | High         | AF31, AF32, AF33 | 30% guaranteed           |
 | **Voice/Video**            | Highest      | EF, AF41         | 20% guaranteed           |
 | **Standard Web Browsing**  | Medium       | AF21             | 40% shared               |
@@ -199,72 +199,72 @@ The company operates a hybrid internet access model with centralized breakout at
 
 ### Per-Site Bandwidth Management
 
-| **Site Type**              | **Business Critical** | **Voice/Video** | **Standard Web** | **Updates** | **General** |
-|----------------------------|----------------------|-----------------|------------------|-------------|-------------|
-| **Datacenter**             | 6 Gbps               | 4 Gbps          | 8 Gbps           | 1 Gbps      | Remaining   |
-| **Regional HQ**            | 600 Mbps             | 400 Mbps        | 800 Mbps         | 100 Mbps    | Remaining   |
-| **Large Office**           | 300 Mbps             | 200 Mbps        | 400 Mbps         | 50 Mbps     | Remaining   |
-| **Small Office**           | 45 Mbps              | 30 Mbps         | 60 Mbps          | 7.5 Mbps    | Remaining   |
+| **Site Type**    | **Business Critical** | **Voice/Video** | **Standard Web** | **Updates** | **General** |
+| ---------------- | --------------------- | --------------- | ---------------- | ----------- | ----------- |
+| **Datacenter**   | 6 Gbps                | 4 Gbps          | 8 Gbps           | 1 Gbps      | Remaining   |
+| **Regional HQ**  | 600 Mbps              | 400 Mbps        | 800 Mbps         | 100 Mbps    | Remaining   |
+| **Large Office** | 300 Mbps              | 200 Mbps        | 400 Mbps         | 50 Mbps     | Remaining   |
+| **Small Office** | 45 Mbps               | 30 Mbps         | 60 Mbps          | 7.5 Mbps    | Remaining   |
 
 ## Public IP Addressing
 
 ### Public IP Allocation
 
-| **Region**                 | **IP Block Size** | **Subnet Example**  | **Usage**                     |
-|----------------------------|-------------------|---------------------|-------------------------------|
-| **Americas**               | /24 per datacenter | 203.0.113.0/24      | Internet-facing services      |
-| **Europe**                 | /24 per datacenter | 198.51.100.0/24     | Internet-facing services      |
-| **Asia**                   | /24 per datacenter | 192.0.2.0/24        | Internet-facing services      |
-| **ANZ**                    | /24 per datacenter | 198.18.0.0/24       | Internet-facing services      |
-| **All Regions**            | /25 per LBO site   | 203.0.114.0/25      | Local breakout addressing     |
+| **Region**      | **IP Block Size**  | **Subnet Example** | **Usage**                 |
+| --------------- | ------------------ | ------------------ | ------------------------- |
+| **Americas**    | /24 per datacenter | 203.0.113.0/24     | Internet-facing services  |
+| **Europe**      | /24 per datacenter | 198.51.100.0/24    | Internet-facing services  |
+| **Asia**        | /24 per datacenter | 192.0.2.0/24       | Internet-facing services  |
+| **ANZ**         | /24 per datacenter | 198.18.0.0/24      | Internet-facing services  |
+| **All Regions** | /25 per LBO site   | 203.0.114.0/25     | Local breakout addressing |
 
 ### NAT Configuration
 
-| **NAT Type**               | **Implementation**                               | **Notes**                     |
-|----------------------------|--------------------------------------------------|-------------------------------|
-| **Source NAT**             | PAT overload (many-to-one)                       | General internet access       |
-| **Static NAT**             | One-to-one for public services                   | Externally accessible servers |
-| **Policy NAT**             | Context-dependent translation                    | Special application needs     |
+| **NAT Type**   | **Implementation**             | **Notes**                     |
+| -------------- | ------------------------------ | ----------------------------- |
+| **Source NAT** | PAT overload (many-to-one)     | General internet access       |
+| **Static NAT** | One-to-one for public services | Externally accessible servers |
+| **Policy NAT** | Context-dependent translation  | Special application needs     |
 
 ## Public Services
 
 ### DMZ Architecture
 
-| **Field**                    | **Value**                                         |
-|------------------------------|--------------------------------------------------|
-| **Firewall Model:**          | Palo Alto PA-7000 Series                          |
-| **DMZ Segmentation:**        | Multiple security zones                           |
-| **Load Balancers:**          | F5 BIG-IP                                         |
-| **WAF:**                     | F5 Advanced WAF                                   |
+| **Field**             | **Value**                |
+| --------------------- | ------------------------ |
+| **Firewall Model:**   | Palo Alto PA-7000 Series |
+| **DMZ Segmentation:** | Multiple security zones  |
+| **Load Balancers:**   | F5 BIG-IP                |
+| **WAF:**              | F5 Advanced WAF          |
 
 ### Exposed Services
 
-| **Service Type**           | **Protection Measures**                           | **Notes**                     |
-|----------------------------|--------------------------------------------------|-------------------------------|
-| **Web Applications**       | WAF, DDoS protection, TLS 1.3                    | Customer-facing applications  |
-| **API Gateways**           | API Gateway with rate limiting, JWT validation    | Partner and customer APIs     |
-| **Email**                  | Anti-spam, SPF, DKIM, DMARC                      | Office 365 with SecureEdge    |
-| **VPN**                    | Palo Alto GlobalProtect                           | Remote access                 |
+| **Service Type**     | **Protection Measures**                        | **Notes**                    |
+| -------------------- | ---------------------------------------------- | ---------------------------- |
+| **Web Applications** | WAF, DDoS protection, TLS 1.3                  | Customer-facing applications |
+| **API Gateways**     | API Gateway with rate limiting, JWT validation | Partner and customer APIs    |
+| **Email**            | Anti-spam, SPF, DKIM, DMARC                    | Office 365 with SecureEdge   |
+| **VPN**              | Palo Alto GlobalProtect                        | Remote access                |
 
 ## Monitoring and Alerts
 
 ### Internet Health Monitoring
 
-| **Metric**                 | **Monitoring Method**                             | **Alert Threshold**          |
-|----------------------------|--------------------------------------------------|-------------------------------|
-| **Connectivity**           | ICMP to multiple destinations                     | >5% packet loss              |
-| **Latency**                | Synthetic transactions                            | >100ms increase from baseline |
-| **Bandwidth Utilization**  | SNMP polling of edge devices                      | >80% for >15 minutes         |
-| **BGP Stability**          | BGP session state and route changes               | Any flapping or major changes |
+| **Metric**                | **Monitoring Method**               | **Alert Threshold**           |
+| ------------------------- | ----------------------------------- | ----------------------------- |
+| **Connectivity**          | ICMP to multiple destinations       | >5% packet loss               |
+| **Latency**               | Synthetic transactions              | >100ms increase from baseline |
+| **Bandwidth Utilization** | SNMP polling of edge devices        | >80% for >15 minutes          |
+| **BGP Stability**         | BGP session state and route changes | Any flapping or major changes |
 
 ### Security Event Monitoring
 
-| **Event Type**             | **Detection Method**                              | **Response**                  |
-|----------------------------|--------------------------------------------------|-------------------------------|
-| **Malware Detection**      | SecureEdge Cloud alerts + Palo Alto logs          | Auto-quarantine + ticket      |
-| **Data Exfiltration**      | DLP alerts, unusual traffic patterns              | Block + security team alert   |
-| **DNS Tunneling**          | DNS query analysis                                | Block + security team alert   |
-| **Botnet Communication**   | Threat intelligence matching                      | Block + security team alert   |
+| **Event Type**           | **Detection Method**                     | **Response**                |
+| ------------------------ | ---------------------------------------- | --------------------------- |
+| **Malware Detection**    | SecureEdge Cloud alerts + Palo Alto logs | Auto-quarantine + ticket    |
+| **Data Exfiltration**    | DLP alerts, unusual traffic patterns     | Block + security team alert |
+| **DNS Tunneling**        | DNS query analysis                       | Block + security team alert |
+| **Botnet Communication** | Threat intelligence matching             | Block + security team alert |
 
 ## Troubleshooting Common Issues
 
