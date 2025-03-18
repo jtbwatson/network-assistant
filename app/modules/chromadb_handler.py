@@ -163,40 +163,6 @@ def init_db():
         return None, None
 
 
-def get_database_stats():
-    """
-    Get statistics about the ChromaDB database.
-    
-    Returns:
-        dict: Database statistics
-    """
-    stats = {
-        "status": db_status.get_status_dict(),
-        "path": config.DB_DIR,
-        "embedding_source": "ollama" if config.USE_OLLAMA_EMBEDDINGS else "local",
-        "embedding_model": config.OLLAMA_EMBEDDING_MODEL if config.USE_OLLAMA_EMBEDDINGS else "all-mpnet-base-v2"
-    }
-    
-    # Add disk usage information if database exists
-    if os.path.exists(config.DB_DIR):
-        try:
-            total_size = 0
-            for dirpath, dirnames, filenames in os.walk(config.DB_DIR):
-                for f in filenames:
-                    fp = os.path.join(dirpath, f)
-                    total_size += os.path.getsize(fp)
-            
-            from modules.utils import format_file_size
-            stats["disk_usage"] = format_file_size(total_size)
-        except Exception as e:
-            logger.error(f"Error getting disk usage: {e}")
-            stats["disk_usage"] = "Unknown"
-    else:
-        stats["disk_usage"] = "0 B"
-    
-    return stats
-
-
 def query_with_timing(collection, query_texts, n_results=5, **kwargs):
     """
     Query the collection with timing information.

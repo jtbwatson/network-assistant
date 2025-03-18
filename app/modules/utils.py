@@ -109,22 +109,7 @@ def split_into_chunks(text, chunk_size=config.CHUNK_SIZE, overlap=config.CHUNK_O
     return chunks
 
 
-def escape_html(unsafe):
-    """
-    Escape HTML special characters in a string.
-    
-    Args:
-        unsafe (str): String that may contain HTML special characters
-        
-    Returns:
-        str: Escaped string safe for HTML inclusion
-    """
-    return unsafe \
-        .replace("&", "&amp;") \
-        .replace("<", "&lt;") \
-        .replace(">", "&gt;") \
-        .replace('"', "&quot;") \
-        .replace("'", "&#039;")
+
 
 
 def format_file_size(size_bytes):
@@ -145,37 +130,3 @@ def format_file_size(size_bytes):
         return f"{size_bytes / (1024 * 1024):.1f} MB"
     else:
         return f"{size_bytes / (1024 * 1024 * 1024):.1f} GB"
-
-
-def get_file_type_by_extension(filename):
-    """
-    Determine file type based on extension.
-    
-    Args:
-        filename (str): Filename with extension
-        
-    Returns:
-        str: File type description
-    """
-    ext = filename.lower().split('.')[-1] if '.' in filename else ''
-    
-    if ext in ['txt']:
-        return 'Text'
-    elif ext in ['md', 'markdown']:
-        return 'Markdown'
-    elif ext in ['yml', 'yaml']:
-        return 'YAML'
-    elif ext in ['json']:
-        return 'JSON'
-    elif ext in ['py']:
-        return 'Python'
-    elif ext in ['js']:
-        return 'JavaScript'
-    elif ext in ['html', 'htm']:
-        return 'HTML'
-    elif ext in ['css']:
-        return 'CSS'
-    elif ext in ['sh', 'bash']:
-        return 'Shell Script'
-    else:
-        return 'Unknown'

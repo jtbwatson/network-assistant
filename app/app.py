@@ -2,8 +2,7 @@ import os
 import logging
 from flask import Flask, request, render_template, jsonify
 from dotenv import load_dotenv
-import time
-import threading
+
 
 # Import modules
 from modules.chromadb_handler import init_db

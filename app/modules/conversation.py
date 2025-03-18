@@ -30,29 +30,3 @@ class ConversationTracker:
             list: List of message dictionaries with 'role' and 'content' keys
         """
         return self.conversations[session_id]
-        
-    def format_history_for_prompt(self, session_id):
-        """
-        Format conversation history for inclusion in a prompt.
-        
-        Args:
-            session_id (str): Unique identifier for the conversation
-            
-        Returns:
-            str: Formatted conversation history
-        """
-        history = self.get_conversation(session_id)
-        return "\nConversation history:\n" + "\n".join(
-            f"{'User' if msg['role'] == 'user' else 'Assistant'}: {msg['content']}"
-            for msg in history
-        )
-        
-    def clear_conversation(self, session_id):
-        """
-        Clear the conversation history for a session.
-        
-        Args:
-            session_id (str): Unique identifier for the conversation
-        """
-        if session_id in self.conversations:
-            del self.conversations[session_id]

@@ -43,18 +43,3 @@ try:
 except ImportError:
     logger.warning("ChromaDB import failed - vector search will be disabled")
     CHROMA_AVAILABLE = False
-
-# Print configuration summary
-def log_config():
-    """Log the current configuration settings"""
-    logger.info("=== Configuration ===")
-    logger.info(f"DOCS_DIR: {DOCS_DIR}")
-    logger.info(f"DB_DIR: {DB_DIR}")
-    logger.info(f"OLLAMA_HOST: {OLLAMA_HOST}")
-    logger.info(f"OLLAMA_MODEL: {OLLAMA_MODEL}")
-    logger.info(f"OLLAMA_EMBEDDING_MODEL: {OLLAMA_EMBEDDING_MODEL}")
-    logger.info(f"USE_OLLAMA_EMBEDDINGS: {USE_OLLAMA_EMBEDDINGS}")
-    logger.info(f"CHROMA_AVAILABLE: {CHROMA_AVAILABLE}")
-    logger.info(f"PORT: {PORT}")
-    logger.info(f"DEBUG_MODE: {DEBUG_MODE}")
-    logger.info("====================")
