@@ -21,7 +21,7 @@ def get_document_status(docs_dir, collection, chroma_available):
         with open(tracking_file, "r", encoding="utf-8") as f:
             tracking_data = json.load(f)
     except Exception as e:
-        logger.error(f"Error loading tracking data: {e}")
+        logger.error(f"🔴 Error loading tracking data: {e}")
         tracking_data = {}
 
     valid_ext = (".txt", ".md", ".yaml", ".yml")
@@ -55,7 +55,7 @@ def get_document_status(docs_dir, collection, chroma_available):
                         except ValueError:
                             pass
         except Exception as e:
-            logger.error(f"Error fetching sources from ChromaDB: {e}")
+            logger.error(f"🔴 Error fetching sources from ChromaDB: {e}")
 
     for file_path in doc_files:
         rel_path = os.path.relpath(file_path, docs_dir)
@@ -87,10 +87,10 @@ def get_document_status(docs_dir, collection, chroma_available):
                         results = collection.get(ids=[file_id + "_0"])
                         is_indexed = bool(results.get("ids"))
                 except Exception as e:
-                    logger.error(f"Error checking {file_path} by ID: {e}")
+                    logger.error(f"🔴 Error checking {file_path} by ID: {e}")
 
             # Log the result for debugging
-            logger.info(f"File {rel_path}: indexed={is_indexed}")
+            logger.info(f"🟢 File {rel_path}: indexed={is_indexed}")
 
             is_modified = rel_path in tracking_data and (
                 tracking_data[rel_path]["mtime"] != mtime
@@ -104,18 +104,18 @@ def get_document_status(docs_dir, collection, chroma_available):
             else:
                 unindexed_files.append(rel_path)
         except Exception as e:
-            logger.error(f"Error processing file {file_path}: {e}")
+            logger.error(f"🔴 Error processing file {file_path}: {e}")
             unindexed_files.append(rel_path)
 
     try:
         with open(tracking_file, "w", encoding="utf-8") as f:
             json.dump(new_tracking_data, f, indent=2)
     except Exception as e:
-        logger.error(f"Error saving tracking data: {e}")
+        logger.error(f"🔴 Error saving tracking data: {e}")
 
     # Log the results
     logger.info(
-        f"Document status: {len(indexed_files)} indexed, {len(unindexed_files)} unindexed, {len(modified_files)} modified"
+        f"🟢 Document status: {len(indexed_files)} indexed, {len(unindexed_files)} unindexed, {len(modified_files)} modified"
     )
 
     return {
@@ -155,7 +155,7 @@ def index_documents(collection, docs_dir=config.DOCS_DIR, specific_files=None, f
     
     if force_reindex:
         # Include all indexed, unindexed, and modified files when force_reindex is True
-        logger.info("Force reindexing all documents")
+        logger.info("🟡 Force reindexing all documents")
         for rel_path in doc_status["indexed"] + doc_status["unindexed"] + doc_status["modified"]:
             files_to_process.append(os.path.join(docs_dir, rel_path))
     elif specific_files:
@@ -170,7 +170,7 @@ def index_documents(collection, docs_dir=config.DOCS_DIR, specific_files=None, f
             files_to_process.append(os.path.join(docs_dir, rel_path))
 
     # Log the number of files to process
-    logger.info(f"Processing {len(files_to_process)} files")
+    logger.info(f"🟡 Processing {len(files_to_process)} files")
 
     for file_path in files_to_process:
         try:
@@ -186,12 +186,12 @@ def index_documents(collection, docs_dir=config.DOCS_DIR, specific_files=None, f
             # Remove existing document chunks if updating
             if is_update:
                 try:
-                    logger.info(f"Removing existing chunks for {rel_path}")
+                    logger.info(f"🟡 Removing existing chunks for {rel_path}")
                     results = collection.get(where={"source": file_path})
                     if results and results["ids"]:
                         collection.delete(ids=results["ids"])
                 except Exception as e:
-                    logger.error(f"Error removing old chunks for {file_path}: {e}")
+                    logger.error(f"🔴 Error removing old chunks for {file_path}: {e}")
                     
             mtime = str(os.path.getmtime(file_path))
             
@@ -211,7 +211,7 @@ def index_documents(collection, docs_dir=config.DOCS_DIR, specific_files=None, f
                             ],
                         )
                     except Exception as e:
-                        logger.error(f"Error adding chunk {i} from {file_path}: {e}")
+                        logger.error(f"🔴 Error adding chunk {i} from {file_path}: {e}")
                         continue
                         
             # Handle YAML/YML files
@@ -228,7 +228,7 @@ def index_documents(collection, docs_dir=config.DOCS_DIR, specific_files=None, f
                             ],
                         )
                     except Exception as e:
-                        logger.error(f"Error processing YAML file {file_path}: {e}")
+                        logger.error(f"🔴 Error processing YAML file {file_path}: {e}")
                         continue
             else:
                 files_skipped += 1
@@ -247,7 +247,7 @@ def index_documents(collection, docs_dir=config.DOCS_DIR, specific_files=None, f
             files_skipped += 1
     
     # Log the results
-    logger.info(f"Indexing completed: {files_indexed} indexed, {files_updated} updated, {files_skipped} skipped")
+    logger.info(f"🟢 Indexing completed: {files_indexed} indexed, {files_updated} updated, {files_skipped} skipped")
             
     return {
         "status": "success",
@@ -279,8 +279,8 @@ def query_vector_db(collection, query, n_results=config.SEARCH_RESULTS):
                 context += f"\n--- From {source} ---\n{doc}\n"
         return context
     except Exception as e:
-        logger.error(f"Error querying vector database: {e}")
-        return "Error retrieving context from database."
+        logger.error(f"🔴 Error querying vector database: {e}")
+        return "🔴 Error retrieving context from database."
 
 
 def list_documents():
@@ -308,7 +308,7 @@ def list_documents():
                         }
                     )
                 except Exception as e:
-                    logger.error(f"Error getting file info for {file_path}: {e}")
+                    logger.error(f"🔴 Error getting file info for {file_path}: {e}")
 
     # Sort files by name
     doc_files.sort(key=lambda x: x["name"].lower())
@@ -318,17 +318,17 @@ def list_documents():
 def get_document_content(file_path):
     """Return contents of a specific document"""
     # Log for debugging
-    logger.info(f"Attempting to open document: {file_path}")
+    logger.info(f"🟡 Attempting to open document: {file_path}")
 
     # Handle URL-encoded paths
     file_path = file_path.replace("%20", " ")
 
     # Ensure file path is within DOCS_DIR by checking for path traversal
     abs_path = os.path.abspath(os.path.join(config.DOCS_DIR, file_path))
-    logger.info(f"Absolute path resolved to: {abs_path}")
+    logger.info(f"🟡 Absolute path resolved to: {abs_path}")
 
     if not abs_path.startswith(os.path.abspath(config.DOCS_DIR)):
-        logger.warning(f"Path traversal attempt detected: {file_path}")
+        logger.warning(f"🟡 Path traversal attempt detected: {file_path}")
         return {
             "status": "error",
             "error": "Invalid file path - attempted path traversal",
@@ -348,7 +348,7 @@ def get_document_content(file_path):
     content = ""
     content_type = "text"
 
-    logger.info(f"Reading file with extension: {file_ext}")
+    logger.info(f"🟡 Reading file with extension: {file_ext}")
 
     if file_ext in (".txt", ".md"):
         try:
@@ -373,21 +373,21 @@ def get_document_content(file_path):
                 content = f.read()
                 content_type = "yaml"
             except Exception as e:
-                logger.error(f"Error parsing YAML: {e}")
+                logger.error(f"🔴 Error parsing YAML: {e}")
                 return {
                     "status": "error",
                     "error": f"Error parsing YAML: {str(e)}",
                     "code": 400
                 }
     else:
-        logger.warning(f"Unsupported file type: {file_ext}")
+        logger.warning(f"🔴 Unsupported file type: {file_ext}")
         return {
             "status": "error",
             "error": f"Unsupported file type: {file_ext}",
             "code": 400
         }
 
-    logger.info(f"Successfully read file: {file_path}")
+    logger.info(f"🟢 Successfully read file: {file_path}")
     return {
         "status": "success",
         "content": content,
@@ -404,10 +404,10 @@ def save_document_content(file_path, content):
 
     # Ensure file path is within DOCS_DIR by checking for path traversal
     abs_path = os.path.abspath(os.path.join(config.DOCS_DIR, file_path))
-    logger.info(f"Saving to path: {abs_path}")
+    logger.info(f"🟡 Saving to path: {abs_path}")
 
     if not abs_path.startswith(os.path.abspath(config.DOCS_DIR)):
-        logger.warning(f"Path traversal attempt detected: {file_path}")
+        logger.warning(f"🟡 Path traversal attempt detected: {file_path}")
         return {
             "status": "error",
             "error": "Invalid file path - attempted path traversal"
@@ -415,7 +415,7 @@ def save_document_content(file_path, content):
 
     # Verify the file exists (we're only allowing updates, not creating new files)
     if not os.path.exists(abs_path):
-        logger.warning(f"File not found: {abs_path}")
+        logger.warning(f"🔴 File not found: {abs_path}")
         return {
             "status": "error",
             "error": f"File not found: {file_path}"
@@ -440,21 +440,21 @@ def save_document_content(file_path, content):
                     with open(abs_path, "r", encoding="utf-8") as f:
                         yaml.safe_load(f)  # Just for validation
                 except Exception as e:
-                    logger.warning(f"Saved YAML may have syntax issues: {e}")
+                    logger.warning(f"🟡 Saved YAML may have syntax issues: {e}")
             except Exception as e:
-                logger.error(f"Error saving YAML file: {e}")
+                logger.error(f"🔴 Error saving YAML file: {e}")
                 return {
                     "status": "error",
                     "error": f"Error saving YAML file: {str(e)}"
                 }
         else:
-            logger.warning(f"Unsupported file type for saving: {file_ext}")
+            logger.warning(f"🔴 Unsupported file type for saving: {file_ext}")
             return {
                 "status": "error",
                 "error": f"Unsupported file type for saving: {file_ext}"
             }
 
-        logger.info(f"Successfully saved content to: {file_path}")
+        logger.info(f"🟢 Successfully saved content to: {file_path}")
         
         # If the file is indexed, mark it as needing reindexing
         # This will add it to the "modified" list in document_status
@@ -465,7 +465,7 @@ def save_document_content(file_path, content):
             "message": "Document saved successfully"
         }
     except Exception as e:
-        logger.error(f"Error saving document {file_path}: {e}", exc_info=True)
+        logger.error(f"🔴 Error saving document {file_path}: {e}", exc_info=True)
         return {
             "status": "error",
             "error": f"Error saving document: {str(e)}"

@@ -45,7 +45,7 @@ def index_endpoint():
         result = index_documents(collection, specific_files=specific_files)
         return jsonify(result)
     except Exception as e:
-        logger.error(f"Error in index_docs endpoint: {e}")
+        logger.error(f"🔴 Error in index_docs endpoint: {e}")
         return jsonify(
             {
                 "status": "error",
@@ -71,7 +71,7 @@ def document_status_endpoint():
         }
         return jsonify(status)
     except Exception as e:
-        logger.error(f"Error in document_status endpoint: {e}")
+        logger.error(f"🔴 Error in document_status endpoint: {e}")
         return jsonify(
             {
                 "error": str(e),
@@ -108,7 +108,7 @@ def list_docs_endpoint():
         doc_files = list_documents()
         return jsonify({"status": "success", "files": doc_files})
     except Exception as e:
-        logger.error(f"Error listing docs: {e}")
+        logger.error(f"🔴 Error listing docs: {e}")
         return jsonify({"status": "error", "error": str(e), "files": []})
 
 
@@ -122,7 +122,7 @@ def get_doc_endpoint(file_path):
             return jsonify(result), result.get("code", 500)
         return jsonify(result)
     except Exception as e:
-        logger.error(f"Error getting document {file_path}: {e}", exc_info=True)
+        logger.error(f"🔴 Error getting document {file_path}: {e}", exc_info=True)
         return jsonify({"status": "error", "error": str(e)}), 500
         
 @app.route("/reindex_all", methods=["POST"])
@@ -132,7 +132,7 @@ def reindex_all_endpoint():
         result = index_documents(collection, force_reindex=True)
         return jsonify(result)
     except Exception as e:
-        logger.error(f"Error in reindex_all endpoint: {e}")
+        logger.error(f"🔴 Error in reindex_all endpoint: {e}")
         return jsonify({
             "status": "error",
             "error": str(e),
@@ -158,7 +158,7 @@ def save_doc_endpoint(file_path):
             
         return jsonify(result)
     except Exception as e:
-        logger.error(f"Error saving document {file_path}: {e}", exc_info=True)
+        logger.error(f"🔴 Error saving document {file_path}: {e}", exc_info=True)
         return jsonify({"status": "error", "error": str(e)}), 500
 
 
@@ -201,7 +201,7 @@ def chat():
                         os.path.basename(m["source"]) for m in results["metadatas"][0]
                     ]
             except Exception as e:
-                logger.error(f"Error getting sources: {e}")
+                logger.error(f"🔴 Error getting sources: {e}")
                 
         return jsonify({
             "response": assistant_response,
@@ -209,7 +209,7 @@ def chat():
             "sources": sources,
         })
     except Exception as e:
-        logger.error(f"Error in chat endpoint: {e}")
+        logger.error(f"🔴 Error in chat endpoint: {e}")
         return jsonify({
             "response": f"An error occurred: {str(e)}",
             "context_used": False,
