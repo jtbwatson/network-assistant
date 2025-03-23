@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,36 +9,52 @@
     <!-- Add Marked.js for Markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <!-- Add highlight.js for code syntax highlighting -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
     <!-- Add Monaco Editor (VS Code editor) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs/loader.min.js"></script>
+    <!-- Add Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
             display: flex;
             flex-direction: column;
             min-height: 100vh;
         }
+
         .content {
             flex-grow: 1;
             overflow-y: auto;
         }
-        /* Markdown styling - same as in index.html */
+
+        /* Markdown styling */
         .markdown-content {
             line-height: 1.6;
             word-wrap: break-word;
         }
-        .markdown-content h1, 
-        .markdown-content h2, 
-        .markdown-content h3, 
+
+        .markdown-content h1,
+        .markdown-content h2,
+        .markdown-content h3,
         .markdown-content h4 {
             font-weight: 600;
             margin-top: 1em;
             margin-bottom: 0.5em;
         }
-        .markdown-content h1 { font-size: 1.8em; }
-        .markdown-content h2 { font-size: 1.5em; }
-        .markdown-content h3 { font-size: 1.3em; }
+
+        .markdown-content h1 {
+            font-size: 1.8em;
+        }
+
+        .markdown-content h2 {
+            font-size: 1.5em;
+        }
+
+        .markdown-content h3 {
+            font-size: 1.3em;
+        }
+
         .markdown-content pre {
             background-color: #1F2937;
             border-radius: 0.375rem;
@@ -45,60 +62,80 @@
             overflow-x: auto;
             margin: 0.75rem 0;
         }
+
         .markdown-content code {
             background-color: #1F2937;
             border-radius: 0.25rem;
             padding: 0.125rem 0.25rem;
             font-family: monospace;
         }
-        .markdown-content ul, .markdown-content ol {
+
+        .markdown-content ul,
+        .markdown-content ol {
             margin-top: 0.75rem;
             margin-bottom: 0.75rem;
             padding-left: 1.75rem;
         }
-        .markdown-content ul { list-style-type: disc; }
-        .markdown-content ol { list-style-type: decimal; }
-        .markdown-content p { margin-bottom: 0.75rem; }
+
+        .markdown-content ul {
+            list-style-type: disc;
+        }
+
+        .markdown-content ol {
+            list-style-type: decimal;
+        }
+
+        .markdown-content p {
+            margin-bottom: 0.75rem;
+        }
+
         .markdown-content a {
             color: #60A5FA;
             text-decoration: underline;
         }
+
         .markdown-content table {
             border-collapse: collapse;
             margin: 0.75rem 0;
             width: 100%;
         }
+
         .markdown-content table th,
         .markdown-content table td {
             border: 1px solid #4B5563;
             padding: 0.6rem;
         }
+
         .markdown-content table th {
             background-color: #374151;
         }
+
         .markdown-content blockquote {
             border-left: 4px solid #4B5563;
             padding-left: 1rem;
             color: #D1D5DB;
             margin: 0.75rem 0;
         }
-        
+
         /* Scrollbar styling */
         ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
         }
+
         ::-webkit-scrollbar-track {
             background: #1F2937;
         }
+
         ::-webkit-scrollbar-thumb {
             background: #4B5563;
-            border-radius: 4px;
+            border-radius: 3px;
         }
+
         ::-webkit-scrollbar-thumb:hover {
             background: #6B7280;
         }
-        
+
         /* Editor styling */
         #editor-container {
             width: 100%;
@@ -107,79 +144,201 @@
             border-radius: 0.375rem;
             overflow: hidden;
         }
-        
+
         /* Toggle button styling */
         .toggle-btn {
             background-color: #4B5563;
             color: white;
             border: none;
-            padding: 8px 16px;
+            padding: 6px 12px;
             border-radius: 4px;
             cursor: pointer;
-            margin-right: 8px;
+            margin-right: 6px;
+            font-size: 0.875rem;
         }
+
         .toggle-btn.active {
             background-color: #6366F1;
         }
-        
+
         /* Status message styling */
         .status-message {
             padding: 8px 12px;
             border-radius: 4px;
             margin-top: 8px;
+            font-size: 0.875rem;
         }
+
         .status-success {
             background-color: rgba(5, 150, 105, 0.2);
             color: #10B981;
         }
+
         .status-error {
             background-color: rgba(220, 38, 38, 0.2);
             color: #EF4444;
         }
+
+        /* Folder tree styling */
+        .folder-tree {
+            font-size: 0.9rem;
+        }
+
+        .folder-tree ul {
+            list-style-type: none;
+            padding-left: 1.5rem;
+        }
+
+        .folder-tree li {
+            margin: 0.25rem 0;
+        }
+
+        .folder-icon {
+            color: #FBBF24;
+            margin-right: 0.5rem;
+        }
+
+        .file-icon {
+            color: #9CA3AF;
+            margin-right: 0.5rem;
+        }
+
+        .yaml-icon {
+            color: #10B981;
+            margin-right: 0.5rem;
+        }
+
+        .folder-tree .active {
+            background-color: #3B82F6;
+            color: white;
+            border-radius: 0.25rem;
+            padding: 0.125rem 0.25rem;
+        }
+
+        .folder-item,
+        .file-item {
+            cursor: pointer;
+            display: block;
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+        }
+
+        .folder-item:hover,
+        .file-item:hover {
+            background-color: #374151;
+        }
+
+        .folder-children {
+            height: 0;
+            overflow: hidden;
+            transition: height 0.2s ease-out;
+        }
+
+        .folder-children.open {
+            height: auto;
+        }
+
+        /* Site metadata display */
+        .site-metadata {
+            background-color: #1F2937;
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid #6366F1;
+            font-size: 0.9rem;
+        }
+
+        .site-metadata .label {
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        .site-metadata .value {
+            color: #D1D5DB;
+        }
     </style>
 </head>
+
 <body class="bg-gray-900 text-gray-200">
-    <header class="bg-indigo-900 text-white p-4 shadow-lg">
-        <div class="container mx-auto max-w-5xl flex justify-between items-center">
-            <h1 class="text-2xl font-bold">Network Documentation</h1>
-            <div id="docTitle" class="text-lg opacity-80"></div>
+    <header class="bg-indigo-900 text-white p-3 shadow-lg">
+        <div class="container mx-auto max-w-full flex justify-between items-center">
+            <h1 class="text-xl font-bold">Network Documentation</h1>
+            <div id="docTitle" class="text-md opacity-80"></div>
         </div>
     </header>
-    
-    <main class="container mx-auto max-w-5xl p-6 content">
-        <!-- View controls -->
-        <div class="flex mb-4 items-center justify-between">
-            <div>
-                <button id="viewBtn" class="toggle-btn active">View</button>
-                <button id="editBtn" class="toggle-btn">Edit</button>
-            </div>
-            <div>
-                <button id="saveBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded hidden">
-                    Save Changes
+
+    <main class="container mx-auto max-w-full p-3 content flex">
+        <!-- Sidebar with folder structure -->
+        <div
+            class="w-1/5 bg-gray-800 rounded-lg shadow-md p-3 mr-3 border border-gray-700 h-[calc(100vh-100px)] overflow-y-auto">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="font-bold text-md text-gray-200">File Explorer</h2>
+                <button id="refreshTree" class="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded">
+                    <i class="fas fa-sync-alt mr-1"></i> Refresh
                 </button>
             </div>
-        </div>
-        
-        <!-- Status message area -->
-        <div id="statusMessage" class="hidden status-message mb-4"></div>
-        
-        <!-- View mode container -->
-        <div id="viewContainer">
-            <div id="docContent" class="markdown-content bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                <p class="text-center">Loading document...</p>
+
+            <div id="folderTree" class="folder-tree">
+                <ul id="tree-root">
+                    <li>
+                        <span class="folder-item" data-path="">
+                            <i class="fas fa-folder folder-icon"></i>network_docs
+                        </span>
+                        <ul class="folder-children">
+                            <!-- Folder structure will be populated here -->
+                            <li>Loading folder structure...</li>
+                        </ul>
+                    </li>
+                </ul>
             </div>
         </div>
-        
-        <!-- Edit mode container (initially hidden) -->
-        <div id="editContainer" class="hidden">
-            <div id="editor-container"></div>
+
+        <!-- Main content area -->
+        <div class="w-4/5">
+            <!-- View controls -->
+            <div class="flex mb-3 items-center justify-between bg-gray-800 rounded-lg p-2 border border-gray-700">
+                <div>
+                    <button id="viewBtn" class="toggle-btn active">View</button>
+                    <button id="editBtn" class="toggle-btn">Edit</button>
+                </div>
+                <div id="breadcrumbs" class="text-sm text-gray-400 flex-grow mx-4">
+                    <!-- Breadcrumbs will be added here -->
+                </div>
+                <div>
+                    <button id="saveBtn"
+                        class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-sm hidden">
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+
+            <!-- Status message area -->
+            <div id="statusMessage" class="hidden status-message mb-2"></div>
+
+            <!-- Site metadata summary for quick reference (only shown for site documents) -->
+            <div id="siteMetadata" class="site-metadata hidden">
+                <!-- Site metadata will be displayed here -->
+            </div>
+
+            <!-- View mode container -->
+            <div id="viewContainer"
+                class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-4 h-[calc(100vh-170px)] overflow-y-auto">
+                <div id="docContent" class="markdown-content">
+                    <p class="text-center">Select a document from the folder tree</p>
+                </div>
+            </div>
+
+            <!-- Edit mode container (initially hidden) -->
+            <div id="editContainer" class="hidden h-[calc(100vh-170px)]">
+                <div id="editor-container"></div>
+            </div>
         </div>
     </main>
-    
-    <footer class="bg-gray-800 text-center p-4 text-gray-400 text-sm">
+
+    <footer class="bg-gray-800 text-center p-2 text-gray-400 text-xs">
         <p>Network Troubleshooting Assistant Documentation Viewer</p>
     </footer>
-    
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const viewContainer = document.getElementById('viewContainer');
@@ -190,19 +349,24 @@
             const editBtn = document.getElementById('editBtn');
             const saveBtn = document.getElementById('saveBtn');
             const statusMessage = document.getElementById('statusMessage');
-            
+            const folderTree = document.getElementById('folderTree');
+            const siteMetadata = document.getElementById('siteMetadata');
+            const breadcrumbs = document.getElementById('breadcrumbs');
+            const refreshTree = document.getElementById('refreshTree');
+
             const urlParams = new URLSearchParams(window.location.search);
-            const docPath = urlParams.get('path');
-            
+            let currentDocPath = urlParams.get('path') || '';
+
             let editor; // Will hold the Monaco editor instance
             let currentDocContent = "";
             let currentDocType = "";
             let editorInitialized = false;
-            
+            let folderStructure = {};
+
             // Set up Marked.js options for security and code highlighting
             marked.setOptions({
                 renderer: new marked.Renderer(),
-                highlight: function(code, language) {
+                highlight: function (code, language) {
                     const validLanguage = hljs.getLanguage(language) ? language : 'plaintext';
                     return hljs.highlight(validLanguage, code).value;
                 },
@@ -214,7 +378,7 @@
                 smartypants: false,
                 xhtml: false
             });
-            
+
             // Helper function to escape HTML content
             function escapeHtml(unsafe) {
                 return unsafe
@@ -224,23 +388,91 @@
                     .replace(/"/g, "&quot;")
                     .replace(/'/g, "&#039;");
             }
-            
+
+            // Parse YAML front matter
+            function parseFrontMatter(content) {
+                const frontMatterRegex = /^---\s*([\s\S]*?)\s*---/;
+                const match = content.match(frontMatterRegex);
+
+                if (match) {
+                    const frontMatterBlock = match[1];
+                    const contentWithoutFrontMatter = content.replace(frontMatterRegex, '').trim();
+
+                    // Simple YAML parser for front matter
+                    const frontMatter = {};
+                    frontMatterBlock.split('\n').forEach(line => {
+                        const parts = line.split(':');
+                        if (parts.length >= 2) {
+                            const key = parts[0].trim();
+                            const value = parts.slice(1).join(':').trim();
+                            frontMatter[key] = value;
+                        }
+                    });
+
+                    return {
+                        frontMatter,
+                        content: contentWithoutFrontMatter
+                    };
+                }
+
+                return {
+                    frontMatter: {},
+                    content
+                };
+            }
+
+            // Display metadata from front matter
+            function displaySiteMetadata(frontMatter) {
+                if (Object.keys(frontMatter).length === 0) {
+                    siteMetadata.classList.add('hidden');
+                    return;
+                }
+
+                const metadataHtml = [];
+
+                // Priority fields to display first if they exist
+                const priorityFields = ['site_id', 'site_code', 'region', 'address', 'primary_contact'];
+
+                // Add priority fields first
+                priorityFields.forEach(field => {
+                    if (frontMatter[field]) {
+                        metadataHtml.push(`<div class="grid grid-cols-4 gap-2">
+                            <span class="label">${field.replace('_', ' ').toUpperCase()}:</span>
+                            <span class="value col-span-3">${frontMatter[field]}</span>
+                        </div>`);
+                    }
+                });
+
+                // Add other fields
+                Object.keys(frontMatter).forEach(key => {
+                    if (!priorityFields.includes(key)) {
+                        metadataHtml.push(`<div class="grid grid-cols-4 gap-2">
+                            <span class="label">${key.replace('_', ' ').toUpperCase()}:</span>
+                            <span class="value col-span-3">${frontMatter[key]}</span>
+                        </div>`);
+                    }
+                });
+
+                siteMetadata.innerHTML = metadataHtml.join('');
+                siteMetadata.classList.remove('hidden');
+            }
+
             // Function to initialize the Monaco editor
             function initEditor(content, language) {
-                const editorLanguage = getMonacoLanguage(language, docPath);
-                
+                const editorLanguage = getMonacoLanguage(language, currentDocPath);
+
                 if (editorInitialized) {
                     editor.setValue(content);
                     monaco.editor.setModelLanguage(editor.getModel(), editorLanguage);
                     return;
                 }
-                
+
                 // Load Monaco editor
-                require.config({ 
+                require.config({
                     paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs' }
                 });
-                
-                require(['vs/editor/editor.main'], function() {
+
+                require(['vs/editor/editor.main'], function () {
                     // Register YAML language if we're working with YAML files
                     if (editorLanguage === 'yaml' && !monaco.languages.getLanguages().some(lang => lang.id === 'yaml')) {
                         // This adds better YAML support
@@ -262,7 +494,7 @@
                             }
                         });
                     }
-                    
+
                     // Create editor with content
                     editor = monaco.editor.create(document.getElementById('editor-container'), {
                         value: content,
@@ -281,35 +513,35 @@
                         renderLineHighlight: 'all',
                         suggestOnTriggerCharacters: true
                     });
-                    
+
                     editorInitialized = true;
-                    
+
                     // Handle window resize
-                    window.addEventListener('resize', function() {
+                    window.addEventListener('resize', function () {
                         if (editor) {
                             editor.layout();
                         }
                     });
-                    
+
                     console.log(`Editor initialized with language: ${editorLanguage}`);
                 });
             }
-            
+
             // Map document type and file extension to Monaco editor language
             function getMonacoLanguage(docType, filePath) {
                 // Get file extension from path
                 const fileExt = filePath ? filePath.split('.').pop().toLowerCase() : '';
-                
+
                 // First check the document type (from server)
-                switch(docType) {
+                switch (docType) {
                     case 'yaml':
                         return 'yaml';
                     case 'md':
                         return 'markdown';
                 }
-                
+
                 // Then check file extension for more specific mapping
-                switch(fileExt) {
+                switch (fileExt) {
                     case 'md':
                         return 'markdown';
                     case 'markdown':
@@ -337,40 +569,40 @@
                         return 'plaintext';
                 }
             }
-            
+
             // Toggle between view and edit modes
-            viewBtn.addEventListener('click', function() {
+            viewBtn.addEventListener('click', function () {
                 viewContainer.classList.remove('hidden');
                 editContainer.classList.add('hidden');
                 saveBtn.classList.add('hidden');
                 viewBtn.classList.add('active');
                 editBtn.classList.remove('active');
             });
-            
-            editBtn.addEventListener('click', function() {
+
+            editBtn.addEventListener('click', function () {
                 viewContainer.classList.add('hidden');
                 editContainer.classList.remove('hidden');
                 saveBtn.classList.remove('hidden');
                 viewBtn.classList.remove('active');
                 editBtn.classList.add('active');
-                
+
                 // Initialize editor if we have content
                 if (currentDocContent) {
                     initEditor(currentDocContent, currentDocType);
                 }
             });
-            
+
             // Save button handler
-            saveBtn.addEventListener('click', function() {
+            saveBtn.addEventListener('click', function () {
                 if (!editor) return;
-                
+
                 const updatedContent = editor.getValue();
-                
+
                 // Show saving status
                 showStatus("Saving changes...", "info");
-                
+
                 // Send updated content to server
-                fetch(`/save_doc/${encodeURIComponent(docPath)}`, {
+                fetch(`/save_doc/${encodeURIComponent(currentDocPath)}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -379,38 +611,42 @@
                         content: updatedContent
                     })
                 })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        showStatus("Document saved successfully!", "success");
-                        currentDocContent = updatedContent;
-                        updatePreview(updatedContent, currentDocType);
-                    } else {
-                        showStatus(`Error: ${data.error}`, "error");
-                    }
-                })
-                .catch(error => {
-                    showStatus(`Error saving document: ${error}`, "error");
-                });
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            showStatus("Document saved successfully!", "success");
+                            currentDocContent = updatedContent;
+
+                            // Parse and update view with new content
+                            const { frontMatter, content } = parseFrontMatter(updatedContent);
+                            displaySiteMetadata(frontMatter);
+                            updatePreview(content, currentDocType);
+                        } else {
+                            showStatus(`Error: ${data.error}`, "error");
+                        }
+                    })
+                    .catch(error => {
+                        showStatus(`Error saving document: ${error}`, "error");
+                    });
             });
-            
+
             // Show status message
             function showStatus(message, type) {
                 statusMessage.textContent = message;
                 statusMessage.classList.remove('hidden', 'status-success', 'status-error');
-                
+
                 if (type === 'success') {
                     statusMessage.classList.add('status-success');
                 } else if (type === 'error') {
                     statusMessage.classList.add('status-error');
                 }
-                
+
                 // Hide after 5 seconds
                 setTimeout(() => {
                     statusMessage.classList.add('hidden');
                 }, 5000);
             }
-            
+
             // Update the preview with new content
             function updatePreview(content, type) {
                 if (type === 'yaml') {
@@ -418,57 +654,294 @@
                 } else {
                     docContent.innerHTML = marked.parse(content);
                 }
-                
+
                 // Apply syntax highlighting
                 docContent.querySelectorAll('pre code').forEach((block) => {
                     hljs.highlightBlock(block);
                 });
             }
-            
-            // Function to load document
-            async function loadDocument() {
-                if (!docPath) {
-                    docContent.innerHTML = '<p class="text-center text-red-400">No document specified.</p>';
+
+            // Update breadcrumbs
+            function updateBreadcrumbs(path) {
+                if (!path) {
+                    breadcrumbs.innerHTML = '<span class="text-blue-400">sites</span>';
                     return;
                 }
-                
+
+                const parts = path.split('/');
+                let breadcrumbHtml = '<span class="text-blue-400">sites</span>';
+                let currentPath = '';
+
+                parts.forEach((part, index) => {
+                    currentPath += (index > 0 ? '/' : '') + part;
+                    const isLast = index === parts.length - 1;
+
+                    breadcrumbHtml += '<span class="mx-1 text-gray-500">/</span>';
+
+                    if (isLast) {
+                        breadcrumbHtml += `<span class="text-blue-400">${part}</span>`;
+                    } else {
+                        breadcrumbHtml += `<span class="text-gray-400">${part}</span>`;
+                    }
+                });
+
+                breadcrumbs.innerHTML = breadcrumbHtml;
+            }
+
+            // Function to load document
+            async function loadDocument(docPath) {
+                if (!docPath) {
+                    docContent.innerHTML = '<p class="text-center text-gray-400">Select a document from the folder tree</p>';
+                    siteMetadata.classList.add('hidden');
+                    return;
+                }
+
+                currentDocPath = docPath;
+                updateBreadcrumbs(docPath);
+
                 try {
                     // Show loading state
                     docContent.innerHTML = '<p class="text-center">Loading document...</p>';
-                    
+
                     const response = await fetch(`/get_doc/${encodeURIComponent(docPath)}`);
                     const data = await response.json();
-                    
+
                     if (data.status === 'error') {
                         docContent.innerHTML = `<p class="text-center text-red-400">Error: ${data.error}</p>`;
+                        siteMetadata.classList.add('hidden');
                         return;
                     }
-                    
+
                     // Store content for editor
                     currentDocContent = data.content;
                     currentDocType = data.type;
-                    
-                    // Log information about the file for debugging
-                    console.log(`Loaded document: ${docPath}`);
-                    console.log(`Document type from server: ${data.type}`);
-                    console.log(`Document extension: ${docPath.split('.').pop().toLowerCase()}`);
-                    
+
                     // Update the document title
                     document.title = `Network Docs - ${data.name}`;
                     docTitle.textContent = data.name;
-                    
+
+                    // Parse front matter if it exists
+                    const { frontMatter, content } = parseFrontMatter(data.content);
+
+                    // Display metadata if available
+                    displaySiteMetadata(frontMatter);
+
                     // Update the content of the document viewer
-                    updatePreview(data.content, data.type);
-                    
+                    updatePreview(content, data.type);
+
+                    // Update the URL to reflect the current document
+                    const newUrl = window.location.pathname + '?path=' + encodeURIComponent(docPath);
+                    window.history.pushState({ path: docPath }, '', newUrl);
+
                 } catch (error) {
                     console.error('Error loading document:', error);
                     docContent.innerHTML = '<p class="text-center text-red-400">Error loading document. Please try again.</p>';
+                    siteMetadata.classList.add('hidden');
                 }
             }
-            
-            // Load the document
-            loadDocument();
+
+            // Function to build the folder tree
+            function buildFolderTree(files) {
+                // Reset the folder structure
+                folderStructure = {};
+
+                // Build a directory tree from flat file list
+                files.forEach(file => {
+                    const path = file.path;
+                    const parts = path.split('/');
+
+                    let current = folderStructure;
+
+                    for (let i = 0; i < parts.length; i++) {
+                        const part = parts[i];
+                        const isFile = i === parts.length - 1;
+
+                        if (isFile) {
+                            if (!current.files) current.files = [];
+                            current.files.push({
+                                name: part,
+                                path: path,
+                                size: file.size,
+                                modified: file.modified
+                            });
+                        } else {
+                            if (!current.folders) current.folders = {};
+                            if (!current.folders[part]) {
+                                current.folders[part] = {};
+                            }
+                            current = current.folders[part];
+                        }
+                    }
+                });
+
+                // Clear the tree and rebuild it
+                const treeRoot = document.getElementById('tree-root');
+                treeRoot.innerHTML = '';
+
+                // Add the root 'sites' folder
+                const sitesItem = document.createElement('li');
+                sitesItem.innerHTML = `
+                    <span class="folder-item" data-path="">
+                        <i class="fas fa-folder-open folder-icon"></i>network_docs
+                    </span>
+                `;
+
+                const sitesChildren = document.createElement('ul');
+                sitesChildren.className = 'folder-children open';
+
+                // Recursively build the tree
+                function buildTreeHTML(structure, parentPath = '') {
+                    const fragment = document.createDocumentFragment();
+
+                    // Add folders first
+                    if (structure.folders) {
+                        Object.keys(structure.folders).sort().forEach(folderName => {
+                            const folderPath = parentPath ? `${parentPath}/${folderName}` : folderName;
+                            const li = document.createElement('li');
+
+                            const folderSpan = document.createElement('span');
+                            folderSpan.className = 'folder-item';
+                            folderSpan.dataset.path = folderPath;
+                            folderSpan.innerHTML = `<i class="fas fa-folder folder-icon"></i>${folderName}`;
+
+                            li.appendChild(folderSpan);
+
+                            // Add folder click handler
+                            folderSpan.addEventListener('click', function (e) {
+                                e.stopPropagation();
+                                const childrenContainer = this.nextElementSibling;
+                                const folderIcon = this.querySelector('i');
+
+                                if (childrenContainer.classList.contains('open')) {
+                                    childrenContainer.classList.remove('open');
+                                    folderIcon.className = 'fas fa-folder folder-icon';
+                                } else {
+                                    childrenContainer.classList.add('open');
+                                    folderIcon.className = 'fas fa-folder-open folder-icon';
+                                }
+                            });
+
+                            // Add children container
+                            const childrenUl = document.createElement('ul');
+                            childrenUl.className = 'folder-children';
+
+                            // If this is a parent path that's currently open, expand it
+                            if (currentDocPath && currentDocPath.startsWith(folderPath)) {
+                                childrenUl.classList.add('open');
+                                folderSpan.querySelector('i').className = 'fas fa-folder-open folder-icon';
+                            }
+
+                            // Recursively add children
+                            const children = buildTreeHTML(structure.folders[folderName], folderPath);
+                            childrenUl.appendChild(children);
+                            li.appendChild(childrenUl);
+
+                            fragment.appendChild(li);
+                        });
+                    }
+
+                    // Then add files
+                    if (structure.files) {
+                        structure.files.sort((a, b) => a.name.localeCompare(b.name)).forEach(file => {
+                            const li = document.createElement('li');
+                            const fileSpan = document.createElement('span');
+
+                            fileSpan.dataset.path = file.path;
+                            fileSpan.className = 'file-item';
+
+                            // Determine file icon based on extension
+                            // Replace your current file icon handling code with this:
+
+                            let iconClass = 'file';
+                            let iconColorClass = 'file-icon';
+
+                            if (file.name.endsWith('.md')) {
+                                iconClass = 'brands fa-markdown';
+                                iconColorClass = 'file-icon';
+                            } else if (file.name.endsWith('.yaml') || file.name.endsWith('.yml')) {
+                                iconClass = 'code';
+                                iconColorClass = 'yaml-icon';
+                            } else {
+                                iconClass = 'file';
+                                iconColorClass = 'file-icon';
+                            }
+
+                            fileSpan.innerHTML = `<i class="fas fa-${iconClass} ${iconColorClass}"></i>${file.name}`;
+
+                            // Highlight current document
+                            if (currentDocPath === file.path) {
+                                fileSpan.classList.add('active');
+                            }
+
+                            // Add file click handler
+                            fileSpan.addEventListener('click', function () {
+                                // Remove active class from all items
+                                document.querySelectorAll('.folder-tree .active').forEach(el => {
+                                    el.classList.remove('active');
+                                });
+
+                                // Add active class to this item
+                                this.classList.add('active');
+
+                                // Load the document
+                                loadDocument(this.dataset.path);
+                            });
+
+                            li.appendChild(fileSpan);
+                            fragment.appendChild(li);
+
+                            li.appendChild(fileSpan);
+                            fragment.appendChild(li);
+                        });
+                    }
+
+                    return fragment;
+                }
+
+                // Build and append the tree structure
+                sitesChildren.appendChild(buildTreeHTML(folderStructure));
+                sitesItem.appendChild(sitesChildren);
+                treeRoot.appendChild(sitesItem);
+            }
+
+            // Function to load the folder tree
+            async function loadFolderTree() {
+                try {
+                    const response = await fetch('/list_docs');
+                    const data = await response.json();
+
+                    if (data.status === 'error') {
+                        console.error('Error loading documents:', data.error);
+                        return;
+                    }
+
+                    buildFolderTree(data.files);
+
+                    // If a document path was provided, load it
+                    if (currentDocPath) {
+                        loadDocument(currentDocPath);
+                    }
+
+                } catch (error) {
+                    console.error('Error loading folder structure:', error);
+                }
+            }
+
+            // Handle refresh tree button
+            refreshTree.addEventListener('click', loadFolderTree);
+
+            // Handle browser back/forward navigation
+            window.addEventListener('popstate', function (event) {
+                if (event.state && event.state.path) {
+                    currentDocPath = event.state.path;
+                    loadDocument(currentDocPath);
+                }
+            });
+
+            // Initialize - load the folder tree
+            loadFolderTree();
         });
     </script>
 </body>
+
 </html>

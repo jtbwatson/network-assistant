@@ -11,6 +11,7 @@
     <!-- Add highlight.js for code syntax highlighting -->
     <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
     <style>
         .chat-message {
@@ -163,6 +164,84 @@
             color: #D1D5DB;
             margin: 0.5rem 0;
         }
+
+        /* Ultra-Compact file explorer styling */
+        .mini-folder-tree {
+            font-size: 0.75rem;
+            line-height: 1.2;
+        }
+
+        .mini-folder-tree ul {
+            list-style-type: none;
+            padding-left: 0.75rem;
+            margin: 0;
+        }
+
+        .mini-folder-tree li {
+            margin: 0.1rem 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mini-folder-tree .folder-icon {
+            color: #FBBF24;
+            margin-right: 0.25rem;
+            width: 12px;
+            display: inline-block;
+            text-align: center;
+            font-size: 0.7rem;
+        }
+
+        .mini-folder-tree .file-icon {
+            color: #9CA3AF;
+            margin-right: 0.25rem;
+            width: 12px;
+            display: inline-block;
+            text-align: center;
+            font-size: 0.7rem;
+        }
+
+        .mini-folder-tree .yaml-icon {
+            color: #10B981;
+            margin-right: 0.25rem;
+            width: 12px;
+            display: inline-block;
+            text-align: center;
+            font-size: 0.7rem;
+        }
+
+        .mini-folder-tree .folder-item,
+        .mini-folder-tree .file-item {
+            cursor: pointer;
+            display: block;
+            padding: 0.1rem 0.25rem;
+            border-radius: 0.125rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mini-folder-tree .folder-item:hover,
+        .mini-folder-tree .file-item:hover {
+            background-color: #374151;
+        }
+
+        .mini-folder-tree .folder-children {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.15s ease-out;
+        }
+
+        .mini-folder-tree .folder-children.open {
+            max-height: 1000px;
+        }
+
+        .mini-folder-tree .active {
+            background-color: #3B82F6;
+            color: white;
+            border-radius: 0.125rem;
+        }
     </style>
 </head>
 
@@ -199,8 +278,18 @@
                         class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 w-full transition-colors mb-3">
                         Refresh Documents
                     </button>
-                    <div id="filesList" class="mt-2 max-h-80 overflow-y-auto">
-                        <p class="text-sm text-gray-400 italic">Click "Refresh Documents" to load files</p>
+                    <div id="filesList" class="mt-1 max-h-80 overflow-y-auto">
+                        <div class="text-xs text-gray-400 mb-1 flex justify-between items-center">
+                            <span id="document-count" class="text-xs"></span>
+                        </div>
+
+                        <!-- Ultra-Compact File Explorer -->
+                        <div class="mini-folder-tree text-xs">
+                            <ul id="mini-tree-root" class="p-0 m-0">
+                                <!-- Tree structure will be populated here -->
+                                <li class="text-gray-400 italic">Loading documents...</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
 
@@ -486,62 +575,165 @@
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
 
-            // Function to load and display the list of documentation files
+            // Function to load and display the list of documentation files as an ultra-compact tree
             async function loadDocumentsList() {
-                filesList.innerHTML = '<p class="text-sm text-gray-400">Loading documents...</p>';
-
                 try {
+                    document.getElementById('mini-tree-root').innerHTML = '<li class="text-gray-400 italic text-xs">Loading...</li>';
+
                     const response = await fetch('/list_docs');
                     const data = await response.json();
 
                     if (data.status === 'error') {
-                        filesList.innerHTML = `<p class="text-sm text-red-400">Error: ${data.error}</p>`;
+                        document.getElementById('mini-tree-root').innerHTML = `<li class="text-red-400 text-xs">Error: ${data.error}</li>`;
                         return;
                     }
 
                     if (data.files.length === 0) {
-                        filesList.innerHTML = '<p class="text-sm text-gray-400">No documentation files found.</p>';
+                        document.getElementById('mini-tree-root').innerHTML = '<li class="text-gray-400 italic text-xs">No docs found</li>';
+                        document.getElementById('document-count').textContent = '0 documents';
                         return;
                     }
 
-                    // Clear and populate the files list
-                    filesList.innerHTML = '';
-                    const fileTable = document.createElement('table');
-                    fileTable.className = 'w-full text-sm';
+                    // Update document count
+                    document.getElementById('document-count').textContent = `${data.files.length} docs`;
 
-                    // Table header
-                    const tableHeader = document.createElement('thead');
-                    tableHeader.innerHTML = `
-                        <tr class="text-left text-xs text-gray-400 border-b border-gray-700">
-                            <th class="py-2">Name</th>
-                        </tr>
-                    `;
-                    fileTable.appendChild(tableHeader);
+                    // Build folder structure
+                    const folderStructure = {};
 
-                    // Table body
-                    const tableBody = document.createElement('tbody');
+                    // Process files into a folder structure
                     data.files.forEach(file => {
-                        const row = document.createElement('tr');
-                        row.className = 'hover:bg-gray-700 cursor-pointer';
-                        row.innerHTML = `
-                            <td class="py-2 truncate" title="${file.name}">${file.name}</td>
-                        `;
-                        row.addEventListener('click', () => openDocument(file.path));
-                        tableBody.appendChild(row);
+                        const path = file.path;
+                        const parts = path.split('/');
+
+                        let current = folderStructure;
+
+                        for (let i = 0; i < parts.length; i++) {
+                            const part = parts[i];
+                            const isFile = i === parts.length - 1;
+
+                            if (isFile) {
+                                if (!current.files) current.files = [];
+                                current.files.push({
+                                    name: part,
+                                    path: path,
+                                    size: file.size,
+                                    modified: file.modified
+                                });
+                            } else {
+                                if (!current.folders) current.folders = {};
+                                if (!current.folders[part]) {
+                                    current.folders[part] = {};
+                                }
+                                current = current.folders[part];
+                            }
+                        }
                     });
 
-                    fileTable.appendChild(tableBody);
-                    filesList.appendChild(fileTable);
+                    // Build the folder tree HTML
+                    document.getElementById('mini-tree-root').innerHTML = '';
+
+                    // Function to recursively build the tree
+                    function buildTreeHTML(structure, parentElement, level = 0) {
+                        // Add folders first
+                        if (structure.folders) {
+                            Object.keys(structure.folders).sort().forEach(folderName => {
+                                const li = document.createElement('li');
+
+                                const folderSpan = document.createElement('span');
+                                folderSpan.className = 'folder-item';
+                                folderSpan.innerHTML = `<i class="fas fa-folder folder-icon"></i>${folderName}`;
+
+                                // Add folder click handler
+                                folderSpan.addEventListener('click', function (e) {
+                                    e.stopPropagation();
+                                    const childrenContainer = this.nextElementSibling;
+                                    const folderIcon = this.querySelector('i');
+
+                                    if (childrenContainer.classList.contains('open')) {
+                                        childrenContainer.classList.remove('open');
+                                        folderIcon.className = 'fas fa-folder folder-icon';
+                                    } else {
+                                        childrenContainer.classList.add('open');
+                                        folderIcon.className = 'fas fa-folder-open folder-icon';
+                                    }
+                                });
+
+                                li.appendChild(folderSpan);
+
+                                // Add children container
+                                const childrenUl = document.createElement('ul');
+                                childrenUl.className = 'folder-children';
+
+                                // Auto-expand first two levels
+                                if (level < 1) {
+                                    childrenUl.classList.add('open');
+                                    folderSpan.querySelector('i').className = 'fas fa-folder-open folder-icon';
+                                }
+
+                                // Recursively add children
+                                buildTreeHTML(structure.folders[folderName], childrenUl, level + 1);
+                                li.appendChild(childrenUl);
+
+                                parentElement.appendChild(li);
+                            });
+                        }
+
+                        // Then add files
+                        if (structure.files) {
+                            structure.files.sort((a, b) => a.name.localeCompare(b.name)).forEach(file => {
+                                const li = document.createElement('li');
+                                const fileSpan = document.createElement('span');
+
+                                fileSpan.dataset.path = file.path;
+                                fileSpan.className = 'file-item';
+
+                                // Determine file icon based on extension
+                                let iconClass, iconColorClass;
+
+                                if (file.name.endsWith('.md')) {
+                                    iconClass = 'brands fa-markdown';
+                                    iconColorClass = 'file-icon';
+                                } else if (file.name.endsWith('.yaml') || file.name.endsWith('.yml')) {
+                                    iconClass = 'code';
+                                    iconColorClass = 'yaml-icon';
+                                } else {
+                                    iconClass = 'file';
+                                    iconColorClass = 'file-icon';
+                                }
+
+                                fileSpan.innerHTML = `<i class="fas fa-${iconClass} ${iconColorClass}"></i>${file.name}`;
+
+                                // Add file click handler
+                                fileSpan.addEventListener('click', function () {
+                                    // Remove active class from all items
+                                    document.querySelectorAll('.mini-folder-tree .active').forEach(el => {
+                                        el.classList.remove('active');
+                                    });
+
+                                    // Add active class to this item
+                                    this.classList.add('active');
+
+                                    // Open document
+                                    openDocument(this.dataset.path);
+                                });
+
+                                li.appendChild(fileSpan);
+                                parentElement.appendChild(li);
+                            });
+                        }
+                    }
+
+                    // Start building from root directly (skip the network_docs level)
+                    buildTreeHTML(folderStructure, document.getElementById('mini-tree-root'));
 
                 } catch (error) {
                     console.error('Error loading documents:', error);
-                    filesList.innerHTML = '<p class="text-sm text-red-400">Error loading documents. Please try again.</p>';
+                    document.getElementById('mini-tree-root').innerHTML = '<li class="text-red-400 text-xs">Error loading docs</li>';
                 }
             }
 
-            // Function to open and display a document
+            // Function to open a document
             function openDocument(filePath) {
-                // Create a URL to the document viewer with the path to the document
                 const viewerUrl = `/doc_viewer?path=${encodeURIComponent(filePath)}`;
                 window.open(viewerUrl, '_blank');
             }
