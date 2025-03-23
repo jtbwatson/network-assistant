@@ -1,0 +1,49 @@
+regions:
+  amer:
+    display_name: "Americas"
+    sites:
+      chicago:
+        display_name: "Chicago"
+        site_code: "CHI01"
+        file: "amer/chicago.md"
+        address: "350 E Cermak Rd, Chicago, IL 60616"
+        type: "Data Center"
+        status: "Active"
+      new_york:
+        display_name: "New York"
+        site_code: "NYC01"
+        file: "amer/new_york.md"
+        address: "111 8th Ave, New York, NY 10011"
+        type: "Office Campus"
+        status: "Active"
+      houston:
+        display_name: "Houston"
+        site_code: "HOU01"
+        file: "amer/houston.md"
+        address: "5555 San Felipe St, Houston, TX 77056"
+        type: "Office"
+        status: "Active"
+  emea:
+    display_name: "Europe, Middle East, and Africa"
+    sites:
+      london:
+        display_name: "London"
+        site_code: "LON01"
+        file: "emea/london.md"
+        address: "1 Braham Street, London E1 8EP"
+        type: "Data Center"
+        status: "Active"
+      paris:
+        display_name: "Paris"
+        site_code: "PAR01"
+        file: "emea/paris.md"
+        address: "114 Rue Ambroise Croizat, 93200 Saint-Denis"
+        type: "Office"
+        status: "Active"
+      madrid:
+        display_name: "Madrid"
+        site_code: "MAD01"
+        file: "emea/madrid.md"
+        address: "Calle de Albasanz, 16, 28037 Madrid"
+        type: "Office"
+        status: "Active"
