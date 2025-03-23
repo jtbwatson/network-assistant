@@ -38,7 +38,7 @@ The application uses a custom Ollama model specifically tailored for network tro
    ollama list
    ```
 
-The model is based on Llama 3.2 and configured with a specialized system prompt to provide expert-level network troubleshooting assistance. It's designed to help IT professionals diagnose and resolve networking issues across various domains. You can of course use any model you like, but this has only been tested on Llama 3.2.
+The model is based on Llama 3.2 or phi4 and configured with a specialized system prompt to provide expert-level network troubleshooting assistance. It's designed to help IT professionals diagnose and resolve networking issues across various domains. You can of course use any model you like, but this has only been tested on Llama 3.2 and phi4.
 
 ### Installation Steps
 
@@ -81,7 +81,7 @@ The model is based on Llama 3.2 and configured with a specialized system prompt 
 ## Model Details
 
 ### Base Model
-- Utilizes Llama 3.2 as the foundational language model
+- Utilizes Llama 3.2 or phi4 as the foundational language model
 - Customized with a specialized system prompt for network troubleshooting
 - Configured to provide technical, contextually relevant assistance
 
