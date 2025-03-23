@@ -3,3 +3,4 @@ network_docs/
 chroma_db/
 .env
 __pycache__
+Modelfile
